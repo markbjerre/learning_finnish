@@ -147,7 +147,7 @@ const WordSearch = () => {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
-                  <Button variant="hero" className="flex-1">
+                  <Button variant="hero" className="flex-1" onClick={() => navigate('/auth')}>
                     Gem til Min Liste
                   </Button>
                   <Button variant="outline" onClick={() => setWordData(null)}>
