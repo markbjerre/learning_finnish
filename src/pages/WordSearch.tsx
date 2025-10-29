@@ -29,6 +29,11 @@ const WordSearch = () => {
           illative: `${searchTerm}an`,
         },
         example: `Tämä on esimerkki lause "${searchTerm}".`,
+        wordHints: [
+          { word: "Tämä", translation: "denne/dette" },
+          { word: "esimerkki", translation: "eksempel" },
+          { word: "lause", translation: "sætning" }
+        ],
         memoryAid: "En sjov måde at huske dette ord på...",
         category: "substantiv"
       });
@@ -132,6 +137,24 @@ const WordSearch = () => {
                   <p className="text-foreground/80 bg-secondary/30 p-4 rounded-lg italic">
                     {wordData.example}
                   </p>
+                  
+                  {/* Word Hints */}
+                  {wordData.wordHints && wordData.wordHints.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-sm text-muted-foreground font-medium">Svære ord:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {wordData.wordHints.map((hint: any, index: number) => (
+                          <div 
+                            key={index}
+                            className="bg-card border border-border rounded-md px-3 py-1.5 text-sm"
+                          >
+                            <span className="font-medium text-foreground">{hint.word}</span>
+                            <span className="text-muted-foreground"> → {hint.translation}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Memory Aid */}
