@@ -1,0 +1,31 @@
+{
+  "word": "vesi",
+  "source_lang": "fi",
+  "target_lang": "da",
+  "cached_at": "2025-11-02T22:24:34.303223",
+  "data": {
+    "word": "vesi",
+    "translation": "vand",
+    "pronunciation": "/ˈʋesi/",
+    "partOfSpeech": "substantiv",
+    "forms": {
+      "nominative": "vesi",
+      "genitive": "veden",
+      "partitive": "vettä",
+      "illative": "veteen"
+    },
+    "example": "Jeg drikker friskt vand hver dag.",
+    "wordHints": [
+      {
+        "word": "drikker",
+        "translation": "drikker"
+      },
+      {
+        "word": "friskt",
+        "translation": "friskt"
+      }
+    ],
+    "memoryAid": "Forestil dig at du vasker dit ansigt med 'vesi' (vand) hver morgen for at være frisk og klar til dagen.",
+    "category": "substantiv"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "word": "kirja",
+  "source_lang": "fi",
+  "target_lang": "da",
+  "cached_at": "2025-11-02T22:21:33.883142",
+  "data": {
+    "word": "kirja",
+    "translation": "bog",
+    "pronunciation": "ˈkir.jɑ",
+    "partOfSpeech": "substantiv",
+    "forms": {
+      "nominative": "kirja",
+      "genitive": "kirjan",
+      "partitive": "kirjaa",
+      "illative": "kirjaan"
+    },
+    "example": "Min søster læser en kirja om eventyr.",
+    "wordHints": [
+      {
+        "word": "søster",
+        "translation": "søster"
+      },
+      {
+        "word": "læser",
+        "translation": "læser"
+      },
+      {
+        "word": "eventyr",
+        "translation": "eventyr"
+      }
+    ],
+    "memoryAid": "Forestil dig, at du har en bog, der åbner døre til eventyr, og at hver side er som en ny søster, der fortæller en historie.",
+    "category": "substantiv"
+  }
+}

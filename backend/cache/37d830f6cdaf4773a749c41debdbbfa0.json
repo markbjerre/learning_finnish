@@ -1,0 +1,31 @@
+{
+  "word": "talo",
+  "source_lang": "fi",
+  "target_lang": "da",
+  "cached_at": "2025-11-02T22:16:26.271825",
+  "data": {
+    "word": "talo",
+    "translation": "hus",
+    "pronunciation": "ˈtɑlo",
+    "partOfSpeech": "substantiv",
+    "forms": {
+      "nominative": "talo",
+      "genitive": "talon",
+      "partitive": "taloa",
+      "illative": "taloon"
+    },
+    "example": "Talo on suuri ja kaunis.",
+    "wordHints": [
+      {
+        "word": "suuri",
+        "translation": "stor"
+      },
+      {
+        "word": "kaunis",
+        "translation": "smuk"
+      }
+    ],
+    "memoryAid": "Forestil dig et 'talo', hvor du kan 'tale' med venner om din 'drøm'.",
+    "category": "substantiv"
+  }
+}

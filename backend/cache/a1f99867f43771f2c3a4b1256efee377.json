@@ -1,0 +1,35 @@
+{
+  "word": "hello",
+  "source_lang": "fi",
+  "target_lang": "da",
+  "cached_at": "2025-11-02T22:19:43.998448",
+  "data": {
+    "word": "hello",
+    "translation": "hej",
+    "pronunciation": "hɛj",
+    "partOfSpeech": "interjektion",
+    "forms": {
+      "nominative": "hei",
+      "genitive": "heijän",
+      "partitive": "heiä",
+      "illative": "heihin"
+    },
+    "example": "Hei, miten voit tänään?",
+    "wordHints": [
+      {
+        "word": "miten",
+        "translation": "hvordan"
+      },
+      {
+        "word": "voit",
+        "translation": "du kan"
+      },
+      {
+        "word": "tänään",
+        "translation": "i dag"
+      }
+    ],
+    "memoryAid": "Forestil dig en glad person, der siger 'hej' til alle i en fest, så husker du, at 'hei' er en venlig hilsen.",
+    "category": "Interjektion"
+  }
+}

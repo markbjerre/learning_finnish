@@ -1,0 +1,35 @@
+{
+  "word": "kissa",
+  "source_lang": "fi",
+  "target_lang": "da",
+  "cached_at": "2025-11-02T22:17:25.257007",
+  "data": {
+    "word": "kissa",
+    "translation": "kat",
+    "pronunciation": "ˈkisa",
+    "partOfSpeech": "substantiv",
+    "forms": {
+      "nominative": "kissa",
+      "genitive": "kissan",
+      "partitive": "kissaa",
+      "illative": "kissaan"
+    },
+    "example": "Kissa leikkii med en bold i haven.",
+    "wordHints": [
+      {
+        "word": "leikkii",
+        "translation": "leger"
+      },
+      {
+        "word": "bold",
+        "translation": "bold"
+      },
+      {
+        "word": "haven",
+        "translation": "haven"
+      }
+    ],
+    "memoryAid": "Forestil dig en kat, der leger med en bold i en kasse - 'kissa' lyder som 'kasse'!",
+    "category": "substantiv"
+  }
+}
