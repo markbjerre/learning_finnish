@@ -4,6 +4,33 @@
 
 **URL**: https://lovable.dev/projects/1f40692c-cca4-4916-b08d-d5818e2b22fe
 
+## ⚠️ Environment Setup (IMPORTANT)
+
+This project requires environment variables. Before running:
+
+1. **Create `.env` file** from template:
+   ```sh
+   cp .env.example .env
+   ```
+
+2. **Add your OpenAI API key** to `.env`:
+   ```env
+   OPENAI_API_KEY=sk-your-actual-key-here
+   ```
+
+3. **Get your OpenAI key**: https://platform.openai.com/api-keys
+
+### 🚀 Migration Note
+
+**Before deploying to VPS:**
+- Move `OPENAI_API_KEY` from project `.env` to `backend/.env`
+- This keeps the API key secure on the backend server
+- Frontend `.env` should only contain `VITE_API_URL`
+
+See `backend/README.md` for deployment instructions.
+
+---
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
@@ -32,7 +59,11 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Set up environment variables
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
+
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 
@@ -59,6 +90,13 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+
+**Backend:**
+- Flask (Python)
+- OpenAI API for AI-powered Finnish word lookup
+- Gunicorn + Docker for deployment
+
+See `backend/README.md` and `DEPLOYMENT.md` for backend details.
 
 ## How can I deploy this project?
 
