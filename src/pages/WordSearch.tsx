@@ -5,40 +5,33 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { getWord, type WordData } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 const WordSearch = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [wordData, setWordData] = useState<any>(null);
+  const [wordData, setWordData] = useState<WordData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
     
     setIsLoading(true);
-    // TODO: Integrate with AI API later
-    // Mock data for now
-    setTimeout(() => {
-      setWordData({
-        word: searchTerm,
-        translation: "eksempel oversættelse",
-        forms: {
-          nominative: searchTerm,
-          genitive: `${searchTerm}n`,
-          partitive: `${searchTerm}a`,
-          illative: `${searchTerm}an`,
-        },
-        example: `Tämä on esimerkki lause "${searchTerm}".`,
-        wordHints: [
-          { word: "Tämä", translation: "denne/dette" },
-          { word: "esimerkki", translation: "eksempel" },
-          { word: "lause", translation: "sætning" }
-        ],
-        memoryAid: "En sjov måde at huske dette ord på...",
-        category: "substantiv"
+    try {
+      const data = await getWord(searchTerm, 'fi', 'da');
+      setWordData(data);
+    } catch (error) {
+      console.error('Error fetching word:', error);
+      toast({
+        title: "Fejl",
+        description: "Kunne ikke hente ord. Prøv venligst igen.",
+        variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
