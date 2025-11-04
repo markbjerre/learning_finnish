@@ -1,9 +1,9 @@
 /**
  * API Service for Finnish Learning App
- * Connects to Flask backend at ai-vaerksted.cloud/finnish
+ * Uses relative paths - will work whether served from / or /finnish/
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-vaerksted.cloud/finnish';
+const API_BASE_URL = '';
 
 export interface WordData {
   word: string;
