@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
@@ -10,7 +10,7 @@ from cache import WordCache
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)
 
 # Initialize OpenAI client
@@ -20,8 +20,14 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 word_cache = WordCache(cache_dir='cache', ttl_hours=24)
 
 @app.route('/')
-def index():
-    return "Finnish Learning API"
+def serve_index():
+    return send_from_directory('static', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    if path and os.path.exists(os.path.join('static', path)):
+        return send_from_directory('static', path)
+    return send_from_directory('static', 'index.html')
 
 @app.route('/health')
 def health():
