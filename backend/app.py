@@ -205,16 +205,29 @@ def serve_index():
 @app.route('/<path:path>')
 def serve_static(path):
     try:
+        # Get full file path
         file_path = os.path.join('static', path)
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            logger.info(f"Serving static file: {path}")
+        abs_file_path = os.path.abspath(file_path)
+        static_abs = os.path.abspath('static')
+        
+        # Security check: ensure file is within static directory
+        if not abs_file_path.startswith(static_abs):
+            logger.warning(f"Path traversal attempt: {path}")
+            return jsonify({"error": "Not found"}), 404
+        
+        # Check if file exists and is a file
+        if os.path.isfile(abs_file_path):
+            logger.info(f"✅ Serving static file: {path}")
             return send_from_directory('static', path)
         
+        # File not found - log for debugging
+        logger.warning(f"❌ File not found: {abs_file_path} (exists: {os.path.exists(abs_file_path)}, isfile: {os.path.isfile(abs_file_path)})")
+        
         # Fall back to index.html for SPA routing
-        logger.info(f"File not found: {path}, falling back to index.html")
+        logger.info(f"Falling back to index.html for SPA route: {path}")
         return send_from_directory('static', 'index.html')
     except Exception as e:
-        logger.error(f"Error serving {path}: {str(e)}")
+        logger.error(f"Error serving {path}: {str(e)}", exc_info=True)
         return send_from_directory('static', 'index.html')
 
 if __name__ == '__main__':
