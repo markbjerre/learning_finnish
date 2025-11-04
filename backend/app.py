@@ -18,6 +18,11 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
+# Add a before_request hook to log all requests
+@app.before_request
+def log_request():
+    logger.info(f"📨 Request: {request.method} {request.path}")
+
 logger.info(f"Current working directory: {os.getcwd()}")
 logger.info(f"Static folder path: {os.path.abspath('static')}")
 logger.info(f"Static folder exists: {os.path.exists('static')}")
