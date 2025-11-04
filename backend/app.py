@@ -18,18 +18,19 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# Add a before_request hook to log all requests
+# Add a before_request hook to strip /finnish prefix if present
 @app.before_request
-def log_request():
-    logger.info(f"📨 Request: {request.method} {request.path}")
-    # If request path starts with /finnish, strip it for internal routing
-    if request.path.startswith('/finnish/'):
-        # Create a new path without the /finnish prefix
-        new_path = request.path[8:]  # Remove '/finnish/'
-        if new_path == '':
+def strip_finnish_prefix():
+    """Strip /finnish prefix from path if Traefik didn't do it"""
+    if request.path.startswith('/finnish'):
+        # Remove the /finnish prefix
+        new_path = request.path[8:]  # len('/finnish') = 8
+        if not new_path:
             new_path = '/'
-        logger.info(f"   Stripping /finnish prefix: {request.path} -> {new_path}")
+        logger.info(f"📨 Stripping /finnish: {request.path} -> {new_path}")
         request.environ['PATH_INFO'] = new_path
+    else:
+        logger.info(f"📨 Request: {request.method} {request.path}")
 
 logger.info(f"Current working directory: {os.getcwd()}")
 logger.info(f"Static folder path: {os.path.abspath('static')}")
