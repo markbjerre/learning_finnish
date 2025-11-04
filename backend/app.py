@@ -196,43 +196,34 @@ def clear_cache():
         "message": f"Cache cleared for '{word}'" if word else "All cache cleared"
     }), 200
 
-# ===== STATIC FILE ROUTES (must come AFTER all API routes) =====
+# ===== STATIC FILE & SPA FALLBACK ROUTES =====
 
 @app.route('/')
-def serve_index():
-    try:
-        return send_from_directory('static', 'index.html')
-    except Exception as e:
-        logger.error(f"Error serving index.html: {str(e)}")
-        return {"error": f"Could not serve index.html: {str(e)}"}, 500
+def serve_root():
+    """Serve index.html for root path"""
+    return send_from_directory('static', 'index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
+    """
+    Serve static files or fall back to index.html for SPA routing.
+    This handles:
+    - /assets/... -> static files
+    - /css/..., /js/..., etc -> static files
+    - Any other path -> index.html (for React Router)
+    """
+    # Try to serve the file
     try:
-        # Get full file path
         file_path = os.path.join('static', path)
-        abs_file_path = os.path.abspath(file_path)
-        static_abs = os.path.abspath('static')
-        
-        # Security check: ensure file is within static directory
-        if not abs_file_path.startswith(static_abs):
-            logger.warning(f"Path traversal attempt: {path}")
-            return jsonify({"error": "Not found"}), 404
-        
-        # Check if file exists and is a file
-        if os.path.isfile(abs_file_path):
+        if os.path.isfile(file_path):
             logger.info(f"✅ Serving static file: {path}")
             return send_from_directory('static', path)
-        
-        # File not found - log for debugging
-        logger.warning(f"❌ File not found: {abs_file_path} (exists: {os.path.exists(abs_file_path)}, isfile: {os.path.isfile(abs_file_path)})")
-        
-        # Fall back to index.html for SPA routing
-        logger.info(f"Falling back to index.html for SPA route: {path}")
-        return send_from_directory('static', 'index.html')
     except Exception as e:
-        logger.error(f"Error serving {path}: {str(e)}", exc_info=True)
-        return send_from_directory('static', 'index.html')
+        logger.warning(f"Error serving {path}: {str(e)}")
+    
+    # Fall back to index.html for SPA routing
+    logger.info(f"SPA fallback: {path} -> index.html")
+    return send_from_directory('static', 'index.html')
 
 if __name__ == '__main__':
     app.run(debug=False, port=5003)
