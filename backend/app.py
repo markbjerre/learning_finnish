@@ -201,28 +201,30 @@ def clear_cache():
 @app.route('/')
 def serve_root():
     """Serve index.html for root path"""
+    logger.info(f"📄 Serving root: /")
     return send_from_directory('static', 'index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
     """
     Serve static files or fall back to index.html for SPA routing.
-    This handles:
-    - /assets/... -> static files
-    - /css/..., /js/..., etc -> static files
-    - Any other path -> index.html (for React Router)
     """
+    logger.info(f"📁 Attempting to serve: {path}")
+    
     # Try to serve the file
     try:
         file_path = os.path.join('static', path)
+        logger.info(f"   Looking for file: {file_path}")
+        logger.info(f"   File exists: {os.path.isfile(file_path)}")
+        
         if os.path.isfile(file_path):
-            logger.info(f"✅ Serving static file: {path}")
+            logger.info(f"   ✅ Found! Serving: {path}")
             return send_from_directory('static', path)
     except Exception as e:
-        logger.warning(f"Error serving {path}: {str(e)}")
+        logger.warning(f"   Error: {str(e)}")
     
     # Fall back to index.html for SPA routing
-    logger.info(f"SPA fallback: {path} -> index.html")
+    logger.info(f"   → Fallback to index.html")
     return send_from_directory('static', 'index.html')
 
 if __name__ == '__main__':
