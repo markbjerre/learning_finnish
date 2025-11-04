@@ -30,28 +30,7 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 # Initialize cache
 word_cache = WordCache(cache_dir='cache', ttl_hours=24)
 
-@app.route('/')
-def serve_index():
-    try:
-        return send_from_directory('static', 'index.html')
-    except Exception as e:
-        return {"error": f"Could not serve index.html: {str(e)}"}, 500
-
-@app.route('/<path:path>')
-def serve_static(path):
-    try:
-        # Skip API routes
-        if path.startswith('api/'):
-            return jsonify({"error": "Not found"}), 404
-        
-        file_path = os.path.join('static', path)
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            return send_from_directory('static', path)
-        
-        # Fall back to index.html for SPA routing
-        return send_from_directory('static', 'index.html')
-    except Exception as e:
-        return send_from_directory('static', 'index.html')
+# ===== API ROUTES (must come BEFORE wildcard routes) =====
 
 @app.route('/health')
 def health():
@@ -202,6 +181,31 @@ def clear_cache():
     return jsonify({
         "message": f"Cache cleared for '{word}'" if word else "All cache cleared"
     }), 200
+
+# ===== STATIC FILE ROUTES (must come AFTER all API routes) =====
+
+@app.route('/')
+def serve_index():
+    try:
+        return send_from_directory('static', 'index.html')
+    except Exception as e:
+        logger.error(f"Error serving index.html: {str(e)}")
+        return {"error": f"Could not serve index.html: {str(e)}"}, 500
+
+@app.route('/<path:path>')
+def serve_static(path):
+    try:
+        file_path = os.path.join('static', path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            logger.info(f"Serving static file: {path}")
+            return send_from_directory('static', path)
+        
+        # Fall back to index.html for SPA routing
+        logger.info(f"File not found: {path}, falling back to index.html")
+        return send_from_directory('static', 'index.html')
+    except Exception as e:
+        logger.error(f"Error serving {path}: {str(e)}")
+        return send_from_directory('static', 'index.html')
 
 if __name__ == '__main__':
     app.run(debug=False, port=5003)
