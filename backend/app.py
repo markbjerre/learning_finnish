@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-app = Flask(__name__, static_folder='static', static_url_path='')
+app = Flask(__name__)
 CORS(app)
 
 logger.info(f"Current working directory: {os.getcwd()}")
@@ -35,6 +35,16 @@ word_cache = WordCache(cache_dir='cache', ttl_hours=24)
 @app.route('/health')
 def health():
     return {"status": "ok"}, 200
+
+@app.route('/debug')
+def debug():
+    """Debug route to check server state"""
+    return jsonify({
+        "cwd": os.getcwd(),
+        "static_exists": os.path.exists('static'),
+        "index_exists": os.path.exists('static/index.html'),
+        "static_contents": os.listdir('static') if os.path.exists('static') else []
+    }), 200
 
 @app.route('/api/word/<word>', methods=['GET'])
 def get_word(word):
