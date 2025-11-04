@@ -19,8 +19,17 @@ app = Flask(__name__)
 CORS(app)
 
 @app.before_request
-def log_request():
+def log_request_and_strip_prefix():
+    """Log requests and strip /finnish prefix if present"""
     logger.info(f"📨 {request.method} {request.path}")
+    
+    # Strip /finnish prefix if it exists (Traefik middleware might not always work)
+    if request.path.startswith('/finnish/'):
+        new_path = request.path[8:]  # Remove '/finnish'
+        logger.info(f"   Stripping /finnish prefix: {request.path} -> {new_path}")
+        request.environ['PATH_INFO'] = new_path
+    elif request.path == '/finnish':
+        request.environ['PATH_INFO'] = '/'
 
 logger.info(f"Current working directory: {os.getcwd()}")
 logger.info(f"Static folder path: {os.path.abspath('static')}")
