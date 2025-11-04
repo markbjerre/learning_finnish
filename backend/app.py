@@ -5,13 +5,24 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import json
 import time
+import logging
 from prompts import build_word_lookup_prompt, build_translation_prompt
 from cache import WordCache
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)
+
+logger.info(f"Current working directory: {os.getcwd()}")
+logger.info(f"Static folder path: {os.path.abspath('static')}")
+logger.info(f"Static folder exists: {os.path.exists('static')}")
+if os.path.exists('static'):
+    logger.info(f"Static folder contents: {os.listdir('static')[:5]}")  # First 5 items
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
@@ -21,13 +32,26 @@ word_cache = WordCache(cache_dir='cache', ttl_hours=24)
 
 @app.route('/')
 def serve_index():
-    return send_from_directory('static', 'index.html')
+    try:
+        return send_from_directory('static', 'index.html')
+    except Exception as e:
+        return {"error": f"Could not serve index.html: {str(e)}"}, 500
 
 @app.route('/<path:path>')
 def serve_static(path):
-    if path and os.path.exists(os.path.join('static', path)):
-        return send_from_directory('static', path)
-    return send_from_directory('static', 'index.html')
+    try:
+        # Skip API routes
+        if path.startswith('api/'):
+            return jsonify({"error": "Not found"}), 404
+        
+        file_path = os.path.join('static', path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return send_from_directory('static', path)
+        
+        # Fall back to index.html for SPA routing
+        return send_from_directory('static', 'index.html')
+    except Exception as e:
+        return send_from_directory('static', 'index.html')
 
 @app.route('/health')
 def health():
