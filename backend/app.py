@@ -46,10 +46,12 @@ word_cache = WordCache(cache_dir='cache', ttl_hours=24)
 # ===== API ROUTES (must come BEFORE wildcard routes) =====
 
 @app.route('/health')
+@app.route('/api/health')
 def health():
     return {"status": "ok"}, 200
 
 @app.route('/debug')
+@app.route('/api/debug')
 def debug():
     """Debug route to check server state"""
     return jsonify({
@@ -60,6 +62,7 @@ def debug():
     }), 200
 
 @app.route('/api/word/<word>', methods=['GET'])
+@app.route('/api/word/<word>/', methods=['GET'])
 def get_word(word):
     """
     Get word translation and details using AI
@@ -217,7 +220,13 @@ def serve_root():
 def serve_static(path):
     """
     Serve static files or fall back to index.html for SPA routing.
+    DO NOT serve paths that start with 'api' - those are API routes.
     """
+    # Reject API paths (should have been caught by earlier routes)
+    if path.startswith('api/'):
+        logger.warning(f"📛 API path {path} fell through to serve_static - returning 404")
+        return jsonify({"error": "Not Found"}), 404
+    
     logger.info(f"📁 Attempting to serve: {path}")
     
     # Try to serve the file
