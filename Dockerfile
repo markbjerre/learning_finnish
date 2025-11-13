@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 COPY . .
-RUN npm run build
+RUN rm -rf dist && npm run build
 
 # Stage 2: Python Flask backend serving SPA
 FROM python:3.11-slim
