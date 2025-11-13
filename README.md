@@ -1,53 +1,46 @@
-# Welcome to your Lovable project
+# Finnish Learning App - Skeleton
 
-## Project info
+A modern language learning platform rebuilt from the ground up with clean architecture.
 
-**URL**: https://lovable.dev/projects/1f40692c-cca4-4916-b08d-d5818e2b22fe
+## Tech Stack
 
-## ⚠️ Environment Setup (IMPORTANT)
+- **Frontend**: React 19 + Vite + TypeScript + React Router
+- **Backend**: Flask 3.x + Python 3.11 + Gunicorn  
+- **Build**: Docker + Alpine Linux
+- **Deployment**: GitHub Webhooks + Traefik Reverse Proxy
+- **Base URL**: `/finnish` (with Traefik prefix stripping)
 
-This project requires environment variables. Before running:
+## Quick Start
 
-1. **Create `.env` file** from template:
-   ```sh
-   cp .env.example .env
-   ```
+### Development
 
-2. **Add your OpenAI API key** to `.env`:
-   ```env
-   OPENAI_API_KEY=sk-your-actual-key-here
-   ```
+```bash
+# Install dependencies
+npm install
+cd backend && pip install -r requirements.txt
 
-3. **Get your OpenAI key**: https://platform.openai.com/api-keys
+# Run frontend (dev server)
+npm run dev
 
-### 🚀 Migration Note
+# Run backend (separate terminal)
+cd backend && python app.py
+```
 
-**Before deploying to VPS:**
-- Move `OPENAI_API_KEY` from project `.env` to `backend/.env`
-- This keeps the API key secure on the backend server
-- Frontend `.env` should only contain `VITE_API_URL`
+### Docker
 
-See `backend/README.md` for deployment instructions.
+```bash
+docker compose up -d
+```
 
----
+## Architecture
 
-## How can I edit this code?
+- **Frontend SPA**: React app with basename="/finnish" for proper routing under Traefik prefix stripping
+- **Backend API**: Minimal Flask server serving static files + health checks
+- **Deployment**: Auto-rebuild on GitHub push via webhook
 
-There are several ways of editing your application.
+## Ready for Development
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/1f40692c-cca4-4916-b08d-d5818e2b22fe) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+This is a clean skeleton. Ready to implement new features!
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
