@@ -1,0 +1,137 @@
+Learning Finnish - Project Structure
+=====================================
+
+Project Location: /mnt/c/Users/Mark BJ/Desktop/Code Projects/learning_finnish
+
+Key Directories and Files:
+==========================
+
+src/
+├── App.tsx                          # Main router component with route definitions
+├── index.css                        # Tailwind CSS imports and base styles
+├── main.tsx                         # React entry point
+├── pages/
+│   └── DesignSelector.tsx          # Home page - design selection interface
+└── components/
+    └── designs/
+        ├── MinimalistDesign.tsx     # Minimalist Nordic design prototype
+        ├── PlayfulDesign.tsx        # Playful & Colorful design prototype
+        └── DarkDesign.tsx           # Dark Mode First design prototype
+
+Configuration Files:
+====================
+├── package.json                     # NPM dependencies and scripts
+├── tailwind.config.js              # Tailwind CSS configuration
+├── postcss.config.js               # PostCSS configuration for Tailwind
+├── vite.config.ts                  # Vite build configuration
+└── tsconfig.json                   # TypeScript configuration
+
+Development:
+============
+- Start dev server: npm run dev
+- Dev server URL: http://localhost:5174/
+- Build for production: npm run build
+- Preview build: npm run preview
+
+Routes:
+=======
+1. http://localhost:5174/              - Design selector home page
+2. http://localhost:5174/design/minimalist  - Minimalist design demo
+3. http://localhost:5174/design/playful     - Playful design demo
+4. http://localhost:5174/design/dark        - Dark mode design demo
+
+Design Features Common to All Prototypes:
+==========================================
+✓ Search interface with language selection
+✓ Translation results with word type badges
+✓ Grammatical forms table (4 cases shown)
+✓ Example sentences with translations
+✓ Wordbook preview showing 3 sample words
+✓ Status indicators (Recent, Learning, Mastered)
+✓ Back navigation to design selector
+✓ Responsive layout
+
+Technologies Used:
+==================
+- React 18.2.0
+- TypeScript
+- Tailwind CSS 3
+- React Router DOM
+- Vite 5.4.21
+
+Dependencies Installed:
+======================
+npm install (Production)
+- react: ^18.2.0
+- react-dom: ^18.2.0
+- react-router-dom: ^6.x
+
+npm install -D (Development)
+- vite: ^5.0.8
+- @vitejs/plugin-react: ^4.2.1
+- tailwindcss: ^3.x
+- postcss: latest
+- autoprefixer: latest
+- typescript: latest
+
+Component Details:
+==================
+
+App.tsx
+-------
+Provides main router with 4 routes:
+- / → DesignSelector (home page)
+- /design/minimalist → MinimalistDesign
+- /design/playful → PlayfulDesign
+- /design/dark → DarkDesign
+
+DesignSelector.tsx
+------------------
+Displays 3 clickable cards for design selection:
+- Minimalist Nordic (☁️)
+- Playful & Colorful (🎨)
+- Dark Mode First (✨)
+
+Each card shows description and links to full demo.
+
+Design Components (Minimalist/Playful/Dark)
+-------------------------------------------
+Each design component includes:
+1. Header with title and back button
+2. Search section with language selector
+3. Translation results display
+4. Grammatical forms grid
+5. Example sentences
+6. Wordbook preview
+7. All styled according to design aesthetic
+
+CSS Styling Approach:
+====================
+- All styling uses Tailwind CSS utility classes
+- No custom CSS needed (only Tailwind imports)
+- Responsive design with Tailwind breakpoints
+- Dark mode toggle available in Tailwind
+- Custom color schemes defined per design
+- Animations and transitions using Tailwind utilities
+
+Build and Run:
+==============
+npm run dev     - Start development server on port 5174
+npm run build   - Build optimized production bundle
+npm run preview - Preview the production build locally
+
+Port Info:
+==========
+Default Vite port (5173) is in use
+App runs on port 5174 instead
+Access at: http://localhost:5174/
+
+Notes:
+======
+- All components are functional React components
+- TypeScript used for type safety
+- React Router v6 for navigation
+- Tailwind CSS v3 for styling
+- No external UI component libraries needed
+- All interactive states demonstrated
+- Fully responsive design

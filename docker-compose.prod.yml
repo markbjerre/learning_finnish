@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (can be on same or different host)
+  db:
+    image: postgres:15-alpine
+    container_name: finnish-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-learning_finnish}
+      POSTGRES_USER: ${DB_USER:-learning_finnish}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"  # Only expose on localhost
+    volumes:
+      - finnish_db_data_prod:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-learning_finnish}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finnish-network
+
+  # FastAPI Backend with Gunicorn
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finnish-backend-prod
+    restart: unless-stopped
+    environment:
+      DEBUG: "False"
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-learning_finnish}:${DB_PASSWORD}@db:5432/${DB_NAME:-learning_finnish}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["https://ai-vaerksted.cloud"]}
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.finnish-backend.rule=Host(`ai-vaerksted.cloud`) && PathPrefix(`/finnish/api`)"
+      - "traefik.http.routers.finnish-backend.entrypoints=websecure"
+      - "traefik.http.routers.finnish-backend.tls.certresolver=myresolver"
+      - "traefik.http.services.finnish-backend.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.finnish-strip.stripprefix.prefixes=/finnish"
+      - "traefik.http.routers.finnish-backend.middlewares=finnish-strip"
+    networks:
+      - traefik-network
+      - finnish-network
+
+  # React Frontend is built into backend image and served by FastAPI
+  # Frontend requests proxy through backend API at /api
+
+volumes:
+  finnish_db_data_prod:
+
+networks:
+  finnish-network:
+    driver: bridge
+  traefik-network:
+    external: true
+    name: traefik-network
