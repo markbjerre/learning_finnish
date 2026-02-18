@@ -1,0 +1,23 @@
+
+  ai-vaerksted-finnish:
+    build:
+      context: /opt/ai-vaerksted/Finnish-Learning
+      dockerfile: Dockerfile
+      args:
+        VITE_BASE_PATH: /finnish/
+    image: ai-vaerksted-finnish:latest
+    container_name: ai-vaerksted-finnish
+    restart: unless-stopped
+    networks:
+      - default
+    environment:
+      - DATABASE_URL=${FINNISH_DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.finnish.rule=Host(`ai-vaerksted.cloud`) && PathPrefix(`/finnish`)
+      - traefik.http.routers.finnish.entrypoints=websecure
+      - traefik.http.routers.finnish.tls.certresolver=mytlschallenge
+      - traefik.http.middlewares.finnish-strip.stripprefix.prefixes=/finnish
+      - traefik.http.routers.finnish.middlewares=finnish-strip@docker
+      - traefik.http.services.finnish.loadbalancer.server.port=8000

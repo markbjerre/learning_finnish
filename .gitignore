@@ -5,6 +5,9 @@ dist
 .env.local
 .env.*.local
 
+# DuckDNS (contains token)
+homelab/.duckdns.env
+
 # Backend
 __pycache__
 *.py[cod]

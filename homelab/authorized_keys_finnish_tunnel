@@ -1,0 +1,1 @@
+command="echo Access restricted",no-agent-forwarding,no-X11-forwarding,permitopen="127.0.0.1:5433" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO1j0ogSYtjLqIblztZUOV9vhO9r5l1GLzy2KdYczuYT vps-finnish-tunnel

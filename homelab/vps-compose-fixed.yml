@@ -1,0 +1,218 @@
+version: "3.7"
+
+services:
+  traefik:
+    image: "traefik"
+    restart: always
+    command:
+      - "--api=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
+      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - traefik_data:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - default
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: always
+    ports:
+      - "127.0.0.1:5678:5678"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.n8n.tls=true
+      - traefik.http.routers.n8n.entrypoints=web,websecure
+      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
+      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
+      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
+      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
+      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
+      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
+      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.n8n.headers.STSPreload=true
+      - traefik.http.routers.n8n.middlewares=n8n@docker
+    environment:
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - NODE_ENV=production
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - default
+
+  housing-db:
+    image: postgres:15-alpine
+    container_name: housing-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_HOUSING_NAME}
+      POSTGRES_USER: ${DB_HOUSING_USER}
+      POSTGRES_PASSWORD: ${DB_HOUSING_PASSWORD}
+    volumes:
+      - housing_db_data:/var/lib/postgresql/data
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_HOUSING_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ai-vaerksted-app:
+    image: ai-vaerksted-app:latest
+    container_name: ai-vaerksted-app
+    build: /opt/ai-vaerksted
+    restart: unless-stopped
+    networks:
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`ai-vaerksted.cloud`) && (Path(`/`) || Path(`/health`) || Path(`/search`) || PathPrefix(`/link-check`))"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.frontend.loadbalancer.server.port=8000"
+
+  ai-vaerksted-housing:
+    image: ai-vaerksted-housing:latest
+    container_name: ai-vaerksted-housing
+    build: /opt/ai-vaerksted/Danish-Housing-Market-Search
+    restart: unless-stopped
+    networks:
+      - default
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_USER: ${DB_USER}
+      DB_NAME: ${DB_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      FLASK_ENV: production
+    depends_on:
+      housing-db:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.housing.rule=Host(`ai-vaerksted.cloud`) && PathPrefix(`/housing`)"
+      - "traefik.http.routers.housing.entrypoints=websecure"
+      - "traefik.http.routers.housing.tls.certresolver=mytlschallenge"
+      - "traefik.http.middlewares.housing-strip.stripprefix.prefixes=/housing"
+      - "traefik.http.routers.housing.middlewares=housing-strip"
+      - "traefik.http.services.housing.loadbalancer.server.port=8000"
+
+  ai-vaerksted-finance:
+    build: /opt/ai-vaerksted/Finance_Monitor
+    container_name: ai-vaerksted-finance
+    networks:
+      - default
+    environment:
+      - FLASK_ENV=production
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    labels:
+      - traefik.enable=true
+      - 'traefik.http.routers.finance.rule=Host(`ai-vaerksted.cloud`) && PathPrefix(`/finance`)'
+      - traefik.http.routers.finance.entrypoints=websecure
+      - traefik.http.routers.finance.tls.certresolver=mytlschallenge
+      - 'traefik.http.middlewares.finance-strip.stripprefix.prefixes=/finance'
+      - traefik.http.routers.finance.middlewares=finance-strip
+      - traefik.http.services.finance.loadbalancer.server.port=8000
+
+  ai-vaerksted-finnish:
+    build:
+      context: /opt/ai-vaerksted/Finnish-Learning
+      dockerfile: Dockerfile
+      args:
+        VITE_BASE_PATH: /finnish/
+    image: ai-vaerksted-finnish:latest
+    container_name: ai-vaerksted-finnish
+    restart: unless-stopped
+    networks:
+      - default
+    environment:
+      - DATABASE_URL=${FINNISH_DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.finnish.rule=Host(`ai-vaerksted.cloud`) && PathPrefix(`/finnish`)
+      - traefik.http.routers.finnish.entrypoints=websecure
+      - traefik.http.routers.finnish.tls.certresolver=mytlschallenge
+      - traefik.http.middlewares.finnish-strip.stripprefix.prefixes=/finnish
+      - traefik.http.routers.finnish.middlewares=finnish-strip@docker
+      - traefik.http.services.finnish.loadbalancer.server.port=8000
+
+  ella-mark-wedding:
+    image: ella-mark-wedding:latest
+    container_name: ella-mark-wedding
+    build:
+      context: /opt/ella-mark-wedding
+      dockerfile: Dockerfile
+      args:
+        - VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
+        - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+    restart: unless-stopped
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wedding.rule=Host(`ellamark.dk`)"
+      - "traefik.http.routers.wedding.entrypoints=websecure"
+      - "traefik.http.routers.wedding.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.wedding.loadbalancer.server.port=8000"
+
+  webhook:
+    build:
+      context: .
+      dockerfile: webhook/Dockerfile
+    container_name: ai-vaerksted-webhook
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /opt/webhook-scripts:/opt/webhook-scripts:ro
+      - /opt/ai-vaerksted:/opt/ai-vaerksted
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webhook.rule=Host(`ai-vaerksted.cloud`) && PathPrefix(`/webhook`)"
+      - "traefik.http.routers.webhook.entrypoints=websecure"
+      - "traefik.http.routers.webhook.tls.certresolver=mytlschallenge"
+      - "traefik.http.middlewares.webhook-strip.stripprefix.prefixes=/webhook"
+      - "traefik.http.routers.webhook.middlewares=webhook-strip"
+      - "traefik.http.services.webhook.loadbalancer.server.port=8888"
+
+volumes:
+  traefik_data:
+  n8n_data:
+  housing_db_data:
+
+networks:
+  default:
+    driver: bridge

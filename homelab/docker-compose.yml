@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  finnish-db:
+    image: postgres:15-alpine
+    container_name: finnish-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: learning_finnish
+      POSTGRES_USER: learning_finnish
+      POSTGRES_PASSWORD: ${FINNISH_DB_PASSWORD}
+    ports:
+      # 0.0.0.0 allows Tailscale access; only Tailscale devices can reach (private VPN)
+      - "0.0.0.0:5433:5432"
+    volumes:
+      - /mnt/seagate_8TB/finnish/postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U learning_finnish"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finnish-network
+
+networks:
+  finnish-network:
+    driver: bridge

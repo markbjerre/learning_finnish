@@ -30,7 +30,8 @@ function LessonDetailPage() {
   })
 
   const handleTestComplete = () => {
-    window.location.href = '/lessons'
+    const base = import.meta.env.BASE_URL?.replace(/\/$/, '') || ''
+    window.location.href = `${base}/lessons`
   }
 
   if (lessonQuery.isPending) {
@@ -42,7 +43,7 @@ function LessonDetailPage() {
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Lesson not found</h1>
-          <a href="/lessons" className="text-indigo-600 hover:text-indigo-700">
+          <a href={`${import.meta.env.BASE_URL?.replace(/\/$/, '') || ''}/lessons`} className="text-indigo-600 hover:text-indigo-700">
             Back to lessons
           </a>
         </div>
@@ -54,9 +55,10 @@ function LessonDetailPage() {
 }
 
 export default function App() {
+  const basename = import.meta.env.BASE_URL?.replace(/\/$/, '') || ''
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
+      <Router basename={basename}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/lessons" element={<Lessons />} />

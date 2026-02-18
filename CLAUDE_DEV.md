@@ -31,7 +31,7 @@ learning_finnish/
 | **Backend** | Python 3.11, Flask, CORS | Port 8000, JSON API |
 | **Build** | Vite, Tailwind CSS | Hot module reload (HMR) |
 | **Testing** | Playwright (configured) | E2E test suite |
-| **Database** | Supabase (future) | For lesson persistence |
+| **Database** | PostgreSQL (homelab) | Via Tailscale: `dobbybrain:5433` |
 
 ---
 
@@ -76,6 +76,8 @@ NODE_ENV=development
 ```env
 FLASK_ENV=development
 FLASK_DEBUG=1
+# Production (VPS): connects to homelab via Tailscale
+DATABASE_URL=postgresql+asyncpg://learning_finnish:PASSWORD@dobbybrain:5433/learning_finnish
 ```
 
 ---
