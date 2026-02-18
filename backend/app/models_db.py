@@ -3,9 +3,19 @@
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey, Boolean, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database import Base
+from app.database import Base, APP_SCHEMA
 from datetime import datetime
 import enum
+
+# PostgreSQL: use app schema to avoid conflict with homelab public.words (integer id)
+# SQLite: no schema (SQLite has limited schema support)
+def _table_args():
+    from app.config import settings
+    if (settings.database_url or "").startswith("postgresql"):
+        return {"schema": APP_SCHEMA}
+    return {}
+
+TABLE_ARGS = _table_args()
 
 
 class DifficultyEnum(str, enum.Enum):
@@ -35,6 +45,7 @@ class WordStatusEnum(str, enum.Enum):
 class Lesson(Base):
     """Lesson model"""
     __tablename__ = "lessons"
+    __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
     title = Column(String(255), index=True)
@@ -54,6 +65,7 @@ class Lesson(Base):
 class VocabularyList(Base):
     """Collection of vocabulary words"""
     __tablename__ = "vocabulary_lists"
+    __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
     title = Column(String(255), index=True)
@@ -70,6 +82,7 @@ class VocabularyList(Base):
 class VocabularyWord(Base):
     """Individual vocabulary word"""
     __tablename__ = "vocabulary_words"
+    __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
     finnish = Column(String(255), index=True)
@@ -88,6 +101,7 @@ class VocabularyWord(Base):
 class Exercise(Base):
     """Exercise within a lesson"""
     __tablename__ = "exercises"
+    __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
     lesson_id = Column(String, ForeignKey("lessons.id"), index=True)
@@ -107,6 +121,7 @@ class Exercise(Base):
 class User(Base):
     """User profile"""
     __tablename__ = "users"
+    __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True)
@@ -123,6 +138,7 @@ class User(Base):
 class LessonProgress(Base):
     """Track user progress in lessons"""
     __tablename__ = "lesson_progress"
+    __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), index=True)
@@ -142,6 +158,7 @@ class LessonProgress(Base):
 class ExerciseResult(Base):
     """Result of a completed exercise"""
     __tablename__ = "exercise_results"
+    __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), index=True)
@@ -160,6 +177,7 @@ class ExerciseResult(Base):
 class Word(Base):
     """Dictionary word with metadata"""
     __tablename__ = "words"
+    __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
     finnish_word = Column(String(255), index=True, unique=True)
@@ -179,6 +197,7 @@ class Word(Base):
 class UserWord(Base):
     """Track user's word learning progress"""
     __tablename__ = "user_words"
+    __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), index=True)

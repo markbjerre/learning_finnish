@@ -2,10 +2,14 @@
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
+from sqlalchemy import text
 from app.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Use separate schema for FastAPI tables to avoid conflict with homelab schema (public.words has integer id)
+APP_SCHEMA = "app"
 
 # Create async engine
 if settings.database_url:
@@ -16,6 +20,7 @@ if settings.database_url:
         pool_pre_ping=True,
         pool_size=20,
         max_overflow=0,
+        connect_args={"server_settings": {"search_path": f'"{APP_SCHEMA}", public'}} if (settings.database_url or "").startswith("postgresql") else {},
     )
 else:
     # Default to SQLite for development if no database_url is set
@@ -52,8 +57,10 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Initialize database tables"""
+    """Initialize database tables in app schema (avoids conflict with homelab public.words)"""
     async with engine.begin() as conn:
+        if "postgresql" in (settings.database_url or ""):
+            await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{APP_SCHEMA}"'))
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database initialized")
 
