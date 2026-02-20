@@ -1,13 +1,13 @@
-# Finnish DB Setup — Update Summary
+# Learning Finnish — Update Summary
 
-**Date:** February 18, 2026  
-**Status:** Phase 1–4 Complete | Tailscale connected (SSH tunnel bypassed due to CGNAT)
+**Date:** February 19, 2026  
+**Status:** DB setup complete | Spaced repetition engine | Test & seed scripts ready | Homelab PostgreSQL via Tailscale
 
 ---
 
 ## Overview
 
-Migration of the Learning Finnish PostgreSQL database to the homelab external drive, with VPS access via Tailscale (bypasses CGNAT/SIM router).
+Learning Finnish uses PostgreSQL on the homelab (external drive) with VPS access via Tailscale. The app uses the `app` schema to avoid conflict with homelab `public.words` (integer id). Spaced repetition engine added for OpenClaw integration.
 
 ```
 Your PC (Windows)                VPS (72.61.179.126)
@@ -22,24 +22,111 @@ finnish-db (PostgreSQL on /mnt/seagate_8TB/)
 
 ---
 
-## Phase 1: Migrate PostgreSQL to External Drive — COMPLETE
+## Spaced Repetition (OpenClaw)
 
-### Completed Steps
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/exercise/next` | GET | Get words + concepts for daily exercise |
+| `/api/exercise/result` | POST | Submit scores, update priorities |
+| `/api/exercise/history` | GET | Past exercise log |
+| `/api/words` | GET | List words (search, filter, pagination) |
+| `/api/words` or `/api/words/add` | POST | Add word (triggers LLM inflection generation) |
+| `/api/words/bulk-add` | POST | Bulk add words (rows or csv) |
+| `/api/words/{id}/inflections` | GET | Get inflection table for a word |
+| `/api/words/{id}/inflections/generate` | POST | Regenerate inflections via LLM |
+| `/api/concepts` | GET | List concepts |
+| `/api/concepts` | POST | Create concept |
+| `/api/settings` | GET/PUT | Level, exercise_word_count, random_ratio |
+| `/api/stats` | GET | Dashboard: mastered, learning, needs_work |
 
-| Step | Action | Status |
-|------|--------|--------|
-| 1.1 | SSH to homelab | Done |
-| 1.2 | Check current state (no existing finnish-db) | Done |
-| 1.3 | Backup existing data | Skipped (no data) |
-| 1.4 | Create `/mnt/seagate_8TB/finnish/postgres_data` | Done |
-| 1.5 | Stop/remove old container | Skipped (none existed) |
-| 1.6 | Copy docker-compose.yml to homelab | Done |
-| 1.7 | Create .env with strong password | Done |
-| 1.8 | `docker compose up -d` | Done |
-| 1.9 | Restore backup | Skipped |
-| 1.10 | Verify with `SELECT version();` | Done |
+**Engine:** Event-driven priority (75% highest-priority + 25% random), decay scales with vocabulary size.
 
-### Deployment Details
+---
+
+## Traefik Routing (VPS)
+
+**405 fix (Feb 2026):** The frontend (`ai-vaerksted-app`) must NOT include `PathPrefix(/finnish)` in its Traefik rule. Finnish traffic goes to `ai-vaerksted-finnish` only. If the frontend catches `/finnish`, POST requests return 405 (Flask has GET-only routes).
+
+- **External:** `https://ai-vaerksted.cloud/finnish/api/...` → Finnish container (prefix stripped)
+- **Internal:** `http://ai-vaerksted-finnish:8000/api/...` (OpenClaw on same Docker network)
+
+---
+
+## Database Schema
+
+- **Schema:** `app` (PostgreSQL) — avoids conflict with homelab `public.words`
+- **SQLite:** No schema; tables in default namespace
+- **Tables:** `lessons`, `users`, `words`, `vocabulary_lists`, `vocabulary_words`, `exercises`, `user_words`, `lesson_progress`, `exercise_results`, `inflections`, `verb_forms`, `concepts`, `word_concepts`, `spaced_exercise_log`, `app_settings`
+
+---
+
+## Migration (Spaced Repetition)
+
+**File:** `backend/scripts/migrate_spaced_repetition.py`
+
+Adds spaced repetition columns to `words` and creates `app_settings` with defaults.
+
+```bash
+cd backend
+python scripts/migrate_spaced_repetition.py           # PostgreSQL
+python scripts/migrate_spaced_repetition.py --use-sqlite  # SQLite
+```
+
+---
+
+## Test Script
+
+**File:** `scripts/test_db_and_api.py`
+
+Tests DB connection and API endpoints (including spaced repetition).
+
+```bash
+# DB only (PostgreSQL from .env)
+python scripts/test_db_and_api.py --db-only
+
+# DB only (SQLite for local testing)
+python scripts/test_db_and_api.py --db-only --use-sqlite
+
+# Full test (DB + API) — in-process, no server needed
+python scripts/test_db_and_api.py --use-sqlite --in-process
+
+# API only (default: http://localhost:8001)
+python scripts/test_db_and_api.py --api-only
+
+# Production API
+python scripts/test_db_and_api.py --base-url https://ai-vaerksted.cloud/finnish
+```
+
+---
+
+## Seed Script
+
+**File:** `scripts/seed_data.py`
+
+Inserts 5 example rows into each table via ORM.
+
+```bash
+# With PostgreSQL (DATABASE_URL in backend/.env)
+python scripts/seed_data.py
+
+# With SQLite (local testing)
+python scripts/seed_data.py --use-sqlite
+```
+
+**Tables seeded:** lessons, users, words, vocabulary_lists, vocabulary_words, exercises, user_words, lesson_progress, exercise_results
+
+---
+
+## Alternative Seed Options
+
+| File | Purpose |
+|------|---------|
+| `scripts/seed_data_raw.sql` | Raw SQL inserts with `ON CONFLICT DO NOTHING` |
+| `scripts/seed_via_sql.py` | Python script running raw SQL (PostgreSQL, `app` schema) |
+
+---
+
+## Homelab PostgreSQL
 
 | Item | Value |
 |------|-------|
@@ -47,104 +134,46 @@ finnish-db (PostgreSQL on /mnt/seagate_8TB/)
 | **Container** | finnish-db |
 | **Image** | postgres:15-alpine |
 | **Data path** | `/mnt/seagate_8TB/finnish/postgres_data` |
-| **Listen** | `0.0.0.0:5433` (Tailscale network) |
+| **Listen** | `0.0.0.0:5433` (Tailscale) |
 | **Database** | learning_finnish |
 | **User** | learning_finnish |
 | **Compose path** | `/home/markbj/homelab/apps/finnish-db/` |
 
-### Credentials
+### Connection String (VPS)
 
-| Variable | Value |
-|----------|-------|
-| **FINNISH_DB_PASSWORD** | `aZxa3LcafGOFgYkZyrURIwiO` |
-
-> **Important:** Store this password securely. Required for Phase 4 (VPS FastAPI connection).
-
-### Verification
-
-```bash
-# Container status
-docker ps | grep finnish-db
-# Up, healthy
-
-# Database test
-docker exec finnish-db psql -U learning_finnish -d learning_finnish -c "SELECT version();"
-# PostgreSQL 15.16 on x86_64-pc-linux-musl
-
-# Port binding
-ss -tlnp | grep 5433
-# 127.0.0.1:5433
 ```
+DATABASE_URL=postgresql+asyncpg://learning_finnish:PASSWORD@dobbybrain:5433/learning_finnish
+```
+
+### Local Development
+
+- **PostgreSQL:** Set `DATABASE_URL` in `backend/.env` (e.g. `localhost:5432`)
+- **SQLite:** Use `--use-sqlite` or leave `DATABASE_URL` empty — uses `backend/learning_finnish.db`
 
 ---
 
-## Sudoers Configuration
+## Deployment
 
-Added passwordless sudo for mkdir/chmod to enable automated homelab setup via SSH:
-
-**File:** `/etc/sudoers.d/markbj-finnish-setup`
-
-```
-markbj ALL=(ALL) NOPASSWD: /usr/bin/mkdir, /usr/bin/chmod
-```
-
-**Note:** `apt update`/`apt upgrade` still require interactive sudo (password).
-
----
-
-## Phase 2 & 3: SSH Tunnel — BYPASSED (Tailscale)
-
-Port forwarding failed due to CGNAT (SIM router). Replaced with **Tailscale**:
-
-- **VPS:** Tailscale installed, authenticated (srv1070976)
-- **Homelab:** Tailscale installed, authenticated (dobbybrain)
-- **Connection:** VPS connects to `dobbybrain:5433` over Tailscale private network
-
-SSH tunnel setup (finnish-tunnel user, autossh) preserved in `homelab/PHASE2_3_4_RUNBOOK.md` for reference if port forwarding becomes available.
-
----
-
-## Phase 4: VPS FastAPI Connection — Ready to Deploy
-
-### Connection String for FastAPI on VPS
-
-```
-DATABASE_URL=postgresql+asyncpg://learning_finnish:aZxa3LcafGOFgYkZyrURIwiO@dobbybrain:5433/learning_finnish
-```
-
-For DobbyBrain compose, use env var: `FINNISH_DATABASE_URL` (same value).
-
-### Deployment
-
-See **`homelab/DEPLOY_VPS_FASTAPI.md`** for step-by-step VPS deployment.
-
-Summary:
 1. Add `FINNISH_DATABASE_URL` to VPS `.env`
 2. Build and start `ai-vaerksted-finnish` from main compose
 3. Verify: `curl https://ai-vaerksted.cloud/finnish/api/health/simple`
 
 ---
 
-## Files Created/Modified
+## OpenClaw Full Test Prompt
 
-| File | Location | Purpose |
-|------|----------|---------|
-| `homelab/docker-compose.yml` | learning_finnish/homelab/ | Homelab PostgreSQL compose |
-| `homelab/.env.example` | learning_finnish/homelab/ | Password template |
-| `homelab/DEPLOY_PHASE1.md` | learning_finnish/homelab/ | Phase 1 runbook |
-| `homelab/setup_env.sh` | learning_finnish/homelab/ | Password generation script |
-| `homelab/setup_finnish_tunnel.sh` | learning_finnish/homelab/ | Tunnel user setup (run with sudo) |
-| `homelab/authorized_keys_finnish_tunnel` | learning_finnish/homelab/ | VPS public key for tunnel |
-| `homelab/PHASE2_3_4_RUNBOOK.md` | learning_finnish/homelab/ | Phase 2–4 manual runbook |
-| `homelab/finnish_schema.sql` | learning_finnish/homelab/ | DB schema |
-| `homelab/duckdns-update.sh` | learning_finnish/homelab/ | DuckDNS updater (cron) |
-| `homelab/TAILSCALE_SETUP.md` | learning_finnish/homelab/ | Tailscale setup guide |
-| `homelab/DEPLOY_VPS_FASTAPI.md` | learning_finnish/homelab/ | VPS FastAPI deployment runbook |
-| `UPDATE_SUMMARY.md` | learning_finnish/ | This file |
+Use the prompt in `openclaw-skill/finnish-trainer/TEST_PROMPT.md` to seed the database (20 words, 3 concepts) and exercise all API endpoints via OpenClaw.
 
 ---
 
-## Reference
+## Reference Files
 
-- **Full instructions:** `finnish_2_0_instructions.md`
-- **Homelab quick reference:** `192.168.0.252 control/DobbyBrain_Homelab.instructions.md`
+| File | Purpose |
+|------|---------|
+| `Spaced_repetition_instruction.md` | Spaced repetition implementation spec |
+| `Full_finnish_openclaw_plan.md` | OpenClaw architecture & plan |
+| `openclaw-skill/finnish-trainer/TEST_PROMPT.md` | Full API test + seed prompt for OpenClaw |
+| `finnish_2_0_instructions.md` | DB migration + Tailscale setup |
+| `homelab/DEPLOY_VPS_FASTAPI.md` | VPS deployment runbook |
+| `homelab/TAILSCALE_SETUP.md` | Tailscale setup |
+| `192.168.0.252 control/DobbyBrain_Homelab.instructions.md` | Homelab quick reference |

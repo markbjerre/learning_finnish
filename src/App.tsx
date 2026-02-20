@@ -4,6 +4,8 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import Home from './pages/Home'
 import Lessons from './pages/Lessons'
+import Dashboard from './pages/Dashboard'
+import Concepts from './pages/Concepts'
 import FlashcardTest from './components/FlashcardTest'
 import { lessonsAPI } from './lib/api'
 import LoadingSpinner from './components/LoadingSpinner'
@@ -61,6 +63,8 @@ export default function App() {
       <Router basename={basename}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/concepts" element={<Concepts />} />
           <Route path="/lessons" element={<Lessons />} />
           <Route path="/lesson/:id" element={<LessonDetailPage />} />
         </Routes>

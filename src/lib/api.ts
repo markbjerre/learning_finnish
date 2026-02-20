@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios'
-import { Lesson, LessonPreview, VocabularyWord, VocabularyList, UserProgress, HealthResponse, WordSearchResult, UserWord, SaveWordRequest, UpdateWordStatusRequest } from './types'
+import { Lesson, LessonPreview, VocabularyWord, VocabularyList, UserProgress, HealthResponse, WordSearchResult, UserWord, SaveWordRequest, UpdateWordStatusRequest, SpacedStats, ExerciseHistoryEntry, Concept, SpacedWord } from './types'
 
 /**
  * Axios instance configured for the Learning Finnish API
@@ -173,6 +173,94 @@ export const wordAPI = {
    */
   removeWord: async (userId: string, wordId: string): Promise<void> => {
     await axiosInstance.delete(`/words/${wordId}/${userId}`)
+  },
+
+  /** Add word (spaced repetition, triggers inflection generation) */
+  addWord: async (payload: { finnish: string; danish?: string; english?: string; word_type?: string; tags?: string[] }): Promise<{ status: string; word_id: string; finnish: string; inflections_generated?: { inflections: number; verb_forms: number } }> => {
+    const response = await axiosInstance.post('/words/add', payload)
+    return response.data
+  },
+
+  /** Get inflections for a word */
+  getInflections: async (wordId: string) => {
+    const response = await axiosInstance.get(`/words/${wordId}/inflections`)
+    return response.data
+  },
+
+  /** List vocabulary words (spaced repetition) */
+  listWords: async (params?: { limit?: number; offset?: number; word_type?: string; search?: string }): Promise<SpacedWord[]> => {
+    const response = await axiosInstance.get('/words', { params })
+    return response.data
+  },
+
+  /** Bulk add words from CSV rows */
+  bulkAdd: async (rows: string[][]): Promise<{ created: number; exists: number; errors: Array<{ row: number; word: string; error: string }> }> => {
+    const response = await axiosInstance.post('/words/bulk-add', { rows })
+    return response.data
+  },
+}
+
+/** Concepts API (grammatical concepts for spaced repetition) */
+export const conceptAPI = {
+  list: async (limit = 100, offset = 0): Promise<Concept[]> => {
+    const response = await axiosInstance.get('/concepts', { params: { limit, offset } })
+    return response.data
+  },
+
+  get: async (id: string) => {
+    const response = await axiosInstance.get(`/concepts/${id}`)
+    return response.data
+  },
+
+  create: async (payload: { name: string; description?: string; tags?: string[] }) => {
+    const response = await axiosInstance.post('/concepts', payload)
+    return response.data
+  },
+
+  update: async (id: string, payload: Partial<{ name: string; description: string; tags: string[] }>) => {
+    const response = await axiosInstance.put(`/concepts/${id}`, payload)
+    return response.data
+  },
+
+  delete: async (id: string) => {
+    const response = await axiosInstance.delete(`/concepts/${id}`)
+    return response.data
+  },
+}
+
+/** Spaced repetition / exercise API */
+export const exerciseAPI = {
+  getNext: async () => {
+    const response = await axiosInstance.get('/exercise/next')
+    return response.data
+  },
+
+  getHistory: async (limit = 20, offset = 0): Promise<ExerciseHistoryEntry[]> => {
+    const response = await axiosInstance.get('/exercise/history', { params: { limit, offset } })
+    return response.data
+  },
+}
+
+/** Stats and settings API */
+export const statsAPI = {
+  getStats: async (): Promise<SpacedStats> => {
+    const response = await axiosInstance.get('/stats')
+    return response.data
+  },
+
+  getSettings: async () => {
+    const response = await axiosInstance.get('/settings')
+    return response.data
+  },
+
+  updateSettings: async (updates: Record<string, unknown>) => {
+    const response = await axiosInstance.put('/settings', updates)
+    return response.data
+  },
+
+  getChartData: async (days = 14): Promise<Array<{ date: string; count: number }>> => {
+    const response = await axiosInstance.get('/stats/chart', { params: { days } })
+    return response.data
   },
 }
 

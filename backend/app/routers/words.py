@@ -23,6 +23,7 @@ from app.models import (
     ExampleSentence,
 )
 from app.services.ai_service import ai_service
+from app.services.inflection_service import generate_and_store_inflections
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,46 @@ def _word_to_schema(word_db: Word) -> WordSchema:
         created_at=word_db.created_at,
         updated_at=word_db.updated_at,
     )
+
+
+@router.get("")
+async def list_words(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    word_type: Optional[str] = Query(None, description="Filter by part_of_speech"),
+    search: Optional[str] = Query(None, description="Search finnish/danish/english"),
+    db: AsyncSession = Depends(get_db),
+):
+    """List vocabulary words (spaced repetition) with optional filters."""
+    stmt = select(Word).order_by(Word.priority.desc(), Word.finnish_word)
+    if word_type:
+        stmt = stmt.where(Word.part_of_speech.ilike(word_type))
+    if search and search.strip():
+        q = f"%{search.strip()}%"
+        from sqlalchemy import or_
+        stmt = stmt.where(
+            or_(
+                Word.finnish_word.ilike(q),
+                Word.english_translation.ilike(q),
+                Word.danish_translation.ilike(q),
+            )
+        )
+    stmt = stmt.limit(limit).offset(offset)
+    result = await db.execute(stmt)
+    words = result.scalars().all()
+    return [
+        {
+            "id": w.id,
+            "finnish": w.finnish_word,
+            "danish": w.danish_translation,
+            "english": w.english_translation,
+            "word_type": w.part_of_speech,
+            "priority": w.priority,
+            "times_served": w.times_served,
+            "last_score": w.last_score,
+        }
+        for w in words
+    ]
 
 
 @router.post("/search", response_model=WordSearchResult)
@@ -117,6 +158,120 @@ async def search_word(
         example_sentences=await ai_service.get_example_sentences(finnish_word),
         ai_definition=await ai_service.get_word_definition(finnish_word),
     )
+
+
+@router.post("/bulk-add")
+async def bulk_add_words(
+    request: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Bulk add words from CSV-like data.
+    Body: {"rows": [["finnish", "danish", "english", "word_type"], ...]}
+    or {"csv": "finnish,danish,english,word_type\\ntalo,hus,house,noun\\n..."}
+    """
+    rows = request.get("rows")
+    if not rows and "csv" in request:
+        import csv
+        import io
+        csv_text = request["csv"]
+        reader = csv.reader(io.StringIO(csv_text))
+        rows = list(reader)
+    if not rows or not isinstance(rows, list):
+        raise HTTPException(status_code=400, detail="Provide 'rows' array or 'csv' string")
+
+    created = 0
+    exists = 0
+    errors = []
+
+    for i, row in enumerate(rows):
+        if not row or not isinstance(row, (list, tuple)):
+            continue
+        # Support: [finnish] or [finnish, danish] or [finnish, danish, english] or [finnish, danish, english, word_type]
+        finnish = (row[0] or "").strip() if len(row) > 0 else ""
+        if not finnish:
+            continue
+        danish = (row[1] or "").strip() if len(row) > 1 else None
+        english = (row[2] or "").strip() if len(row) > 2 else finnish
+        word_type = (row[3] or "noun").strip().lower() if len(row) > 3 else "noun"
+
+        try:
+            stmt = select(Word).where(Word.finnish_word.ilike(finnish))
+            result = await db.execute(stmt)
+            existing = result.scalars().first()
+            if existing:
+                exists += 1
+                continue
+            word = Word(
+                id=str(uuid.uuid4()),
+                finnish_word=finnish,
+                danish_translation=danish,
+                english_translation=english,
+                part_of_speech=word_type,
+                tags=json.dumps([]),
+                priority=1.0,
+            )
+            db.add(word)
+            await db.flush()
+            await generate_and_store_inflections(db, word)
+            created += 1
+        except Exception as e:
+            errors.append({"row": i + 1, "word": finnish, "error": str(e)})
+
+    await db.commit()
+    return {
+        "created": created,
+        "exists": exists,
+        "errors": errors[:20],
+    }
+
+
+async def _add_word_impl(request: dict, db: AsyncSession):
+    """Shared implementation for POST /words and POST /words/add."""
+    finnish = request.get("finnish", "").strip()
+    if not finnish:
+        raise HTTPException(status_code=400, detail="finnish is required")
+
+    stmt = select(Word).where(Word.finnish_word.ilike(finnish))
+    result = await db.execute(stmt)
+    existing = result.scalars().first()
+    if existing:
+        return {"status": "exists", "word_id": existing.id, "finnish": existing.finnish_word}
+
+    word = Word(
+        id=str(uuid.uuid4()),
+        finnish_word=finnish,
+        danish_translation=request.get("danish"),
+        english_translation=request.get("english", finnish),
+        part_of_speech=request.get("word_type", "noun"),
+        tags=json.dumps(request.get("tags", [])),
+        priority=1.0,
+    )
+    db.add(word)
+    await db.flush()
+
+    infl_result = await generate_and_store_inflections(db, word)
+    await db.commit()
+
+    return {
+        "status": "created",
+        "word_id": word.id,
+        "finnish": word.finnish_word,
+        "inflections_generated": infl_result,
+    }
+
+
+@router.post("")
+@router.post("/add")
+async def add_word_simple(
+    request: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Add word (OpenClaw). Accepts both POST /api/words and POST /api/words/add.
+    Body: {"finnish": "talo", "danish": "hus", "english": "house", "word_type": "noun"}
+    """
+    return await _add_word_impl(request, db)
 
 
 @router.post("/save", response_model=UserWordSchema)
@@ -178,9 +333,12 @@ async def save_word(
                     ]
                 ),
                 ai_definition=await ai_service.get_word_definition(request.finnish_word),
+                priority=1.0,
             )
             db.add(word_db)
             await db.flush()
+            inflection_result = await generate_and_store_inflections(db, word_db)
+            logger.info(f"Generated inflections for '{word_db.finnish_word}': {inflection_result}")
 
         # Check if user already has this word
         user_word_stmt = select(UserWord).where(
@@ -412,6 +570,62 @@ async def get_ai_definition(
         "ai_definition": word_db.ai_definition,
         "ai_examples": ai_examples,
     }
+
+
+@router.get("/{word_id}/inflections")
+async def get_word_inflections(
+    word_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all inflections/verb forms for a word."""
+    stmt = (
+        select(Word)
+        .where(Word.id == word_id)
+        .options(selectinload(Word.inflections), selectinload(Word.verb_forms))
+    )
+    result = await db.execute(stmt)
+    word = result.scalars().first()
+
+    if not word:
+        raise HTTPException(status_code=404, detail="Word not found")
+
+    return {
+        "word_id": word.id,
+        "finnish_word": word.finnish_word,
+        "part_of_speech": word.part_of_speech,
+        "inflections": [
+            {"case_name": i.case_name, "singular": i.singular, "plural": i.plural, "notes": i.notes}
+            for i in (word.inflections or [])
+        ],
+        "verb_forms": [
+            {"form_name": v.form_name, "form_value": v.form_value, "tense": v.tense, "notes": v.notes}
+            for v in (word.verb_forms or [])
+        ],
+    }
+
+
+@router.post("/{word_id}/inflections/generate")
+async def regenerate_inflections(
+    word_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-generate inflections for a word using the LLM."""
+    from sqlalchemy import delete
+    from app.models_db import Inflection, VerbForm
+
+    stmt = select(Word).where(Word.id == word_id)
+    result = await db.execute(stmt)
+    word = result.scalars().first()
+
+    if not word:
+        raise HTTPException(status_code=404, detail="Word not found")
+
+    await db.execute(delete(Inflection).where(Inflection.word_id == word_id))
+    await db.execute(delete(VerbForm).where(VerbForm.word_id == word_id))
+    await db.commit()
+
+    inflection_result = await generate_and_store_inflections(db, word)
+    return {"status": "ok", **inflection_result}
 
 
 @router.delete("/{word_id}/{user_id}", response_model=dict)

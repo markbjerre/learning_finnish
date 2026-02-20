@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { wordAPI } from '../lib/api'
-import { UserWord, WordStatus } from '../lib/types'
+import { UserWord } from '../lib/types'
 import WordLookup from '../components/WordLookup'
 import Wordbook from '../components/Wordbook'
+import AddWord from '../components/AddWord'
+import WordList from '../components/WordList'
+import BulkImport from '../components/BulkImport'
 import LoadingSpinner from '../components/LoadingSpinner'
 
 export default function Home() {
   const userId = 'user-1'
-  const [activeView, setActiveView] = useState<'lookup' | 'wordbook'>('lookup')
+  const [activeView, setActiveView] = useState<'lookup' | 'wordbook' | 'add' | 'vocabulary' | 'bulk'>('lookup')
 
   const { data: userWords = [], isLoading } = useQuery({
     queryKey: ['userWords', userId],
@@ -31,9 +35,25 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <div className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-8 py-6">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Learn Finnish</h1>
-          <p className="text-lg text-gray-600">Search words, build your wordbook, track progress</p>
+        <div className="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Learn Finnish</h1>
+            <p className="text-lg text-gray-600">Search words, build your wordbook, track progress</p>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              to={`${import.meta.env.BASE_URL?.replace(/\/$/, '') || ''}/concepts`}
+              className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium"
+            >
+              Concepts
+            </Link>
+            <Link
+              to={`${import.meta.env.BASE_URL?.replace(/\/$/, '') || ''}/dashboard`}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+            >
+              Dashboard
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -66,6 +86,36 @@ export default function Home() {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveView('add')}
+              className={`px-6 py-4 font-medium border-b-2 transition ${
+                activeView === 'add'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Add Word
+            </button>
+            <button
+              onClick={() => setActiveView('vocabulary')}
+              className={`px-6 py-4 font-medium border-b-2 transition ${
+                activeView === 'vocabulary'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Vocabulary
+            </button>
+            <button
+              onClick={() => setActiveView('bulk')}
+              className={`px-6 py-4 font-medium border-b-2 transition ${
+                activeView === 'bulk'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Bulk Import
+            </button>
           </div>
         </div>
       </div>
@@ -97,8 +147,14 @@ export default function Home() {
               </div>
             )}
           </div>
-        ) : (
+        ) : activeView === 'wordbook' ? (
           <Wordbook userId={userId} />
+        ) : activeView === 'add' ? (
+          <AddWord />
+        ) : activeView === 'vocabulary' ? (
+          <WordList />
+        ) : (
+          <BulkImport />
         )}
       </div>
     </div>

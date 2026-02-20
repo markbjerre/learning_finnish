@@ -58,10 +58,26 @@ async def get_db() -> AsyncSession:
 
 async def init_db():
     """Initialize database tables in app schema (avoids conflict with homelab public.words)"""
+    from app.models_db import AppSetting
+
     async with engine.begin() as conn:
         if "postgresql" in (settings.database_url or ""):
             await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{APP_SCHEMA}"'))
         await conn.run_sync(Base.metadata.create_all)
+
+    # Ensure default settings exist (idempotent)
+    async with async_session() as session:
+        try:
+            from sqlalchemy import select
+            defaults = [("level", "15"), ("exercise_word_count", "5"), ("random_ratio", "0.25")]
+            for key, value in defaults:
+                result = await session.execute(select(AppSetting).where(AppSetting.key == key))
+                if result.scalars().first() is None:
+                    session.add(AppSetting(key=key, value=value))
+            await session.commit()
+        except Exception as e:
+            logger.debug(f"Default settings init: {e}")
+
     logger.info("Database initialized")
 
 

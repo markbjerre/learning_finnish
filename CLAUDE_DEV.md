@@ -2,8 +2,8 @@
 
 ## Project Overview
 
-**Type**: Full-Stack React + Python Flask Application  
-**Status**: Early-stage skeleton, ready for feature development  
+**Type**: Full-Stack React + FastAPI Application  
+**Status**: Spaced repetition engine implemented, OpenClaw-ready  
 **Live URL**: https://ai-vaerksted.cloud/finnish  
 **Repository**: Local monorepo under `/learning_finnish`
 
@@ -14,10 +14,15 @@ learning_finnish/
 │   ├── components/designs/   # Design variations
 │   ├── pages/                # Page components
 │   └── App.tsx               # Main app entry
-├── backend/                  # Flask backend
-│   ├── app.py                # Flask app with CORS
+├── backend/                  # FastAPI backend
+│   ├── app/
+│   │   ├── main.py           # FastAPI app
+│   │   ├── routers/          # health, lessons, words, exercise, settings
+│   │   ├── services/         # ai_service, spaced_repetition, inflection_service
+│   │   └── models_db.py      # SQLAlchemy models
+│   ├── scripts/migrate_spaced_repetition.py
 │   └── requirements.txt
-├── public/                   # Static assets
+├── scripts/test_db_and_api.py
 └── Dockerfile.dev            # Development container
 ```
 
@@ -28,10 +33,10 @@ learning_finnish/
 | Layer | Technology | Details |
 |-------|-----------|---------|
 | **Frontend** | React 18, TypeScript, Vite | Port 5173 (dev), SPA routing |
-| **Backend** | Python 3.11, Flask, CORS | Port 8000, JSON API |
+| **Backend** | Python 3.11+, FastAPI | Port 8000/8001, async JSON API |
 | **Build** | Vite, Tailwind CSS | Hot module reload (HMR) |
-| **Testing** | Playwright (configured) | E2E test suite |
-| **Database** | PostgreSQL (homelab) | Via Tailscale: `dobbybrain:5433` |
+| **Testing** | test_db_and_api.py, Playwright | DB + API tests (`--in-process` for no server) |
+| **Database** | PostgreSQL (homelab) or SQLite | Via Tailscale: `dobbybrain:5433` |
 
 ---
 
@@ -57,11 +62,9 @@ npm run dev
 
 # Terminal 2: Backend
 cd learning_finnish/backend
-python -m venv venv
-source venv/bin/activate  # or: venv\Scripts\activate (Windows)
 pip install -r requirements.txt
-flask run
-# http://localhost:8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+# http://localhost:8001
 ```
 
 ### Environment Variables
@@ -74,10 +77,10 @@ NODE_ENV=development
 
 **Backend** (`.env`):
 ```env
-FLASK_ENV=development
-FLASK_DEBUG=1
+# Empty or omit for SQLite (backend/learning_finnish.db)
 # Production (VPS): connects to homelab via Tailscale
 DATABASE_URL=postgresql+asyncpg://learning_finnish:PASSWORD@dobbybrain:5433/learning_finnish
+OPENAI_API_KEY=...  # Optional: for inflection generation
 ```
 
 ---
@@ -159,26 +162,37 @@ Use **Refactoring-specialist**:
 
 ## API Endpoints
 
-### Health Check
+### Health
 ```
-GET /health
-GET /api/health
-Response: {"status": "ok"}
-```
-
-### Root SPA Route
-```
-GET /
-Response: index.html (serves React app)
+GET /api/health/simple     - {"status": "ok"}
+GET /api/health            - Full health check
 ```
 
-### Future Endpoints (To Be Implemented)
+### Spaced Repetition (OpenClaw)
 ```
+GET  /api/exercise/next    - Words + concepts for exercise
+POST /api/exercise/result  - Submit scores, update priorities
+GET  /api/exercise/history - Past exercises
+GET  /api/words            - List words (search, filter, pagination)
+POST /api/words            - Add word (alias for /api/words/add)
+POST /api/words/add        - Add word (triggers inflection generation)
+POST /api/words/bulk-add   - Bulk add words (rows or csv)
+GET  /api/concepts         - List concepts
+POST /api/concepts         - Create concept
+GET  /api/words/{id}/inflections - Inflection table
+POST /api/words/{id}/inflections/generate - Regenerate via LLM
+GET  /api/settings         - Level, exercise_word_count, random_ratio
+PUT  /api/settings         - Update settings
+GET  /api/stats            - Dashboard: mastered, learning, needs_work
+```
+
+### Words & Lessons
+```
+POST /api/words/search    - Search word
+POST /api/words/save      - Save to wordbook
+GET  /api/lessons         - List lessons
+GET  /api/lessons/{id}     - Fetch lesson
 POST /api/lessons          - Create lesson
-GET  /api/lessons/<id>     - Fetch lesson
-PUT  /api/lessons/<id>     - Update lesson
-DELETE /api/lessons/<id>   - Delete lesson
-POST /api/progress         - Track user progress
 ```
 
 ---
@@ -194,7 +208,11 @@ POST /api/progress         - Track user progress
 - `tailwind.config.js` - Tailwind CSS config
 
 ### Key Backend Files
-- `backend/app.py` - Flask application
+- `backend/app/main.py` - FastAPI application
+- `backend/app/routers/exercise.py` - Spaced repetition endpoints
+- `backend/app/services/spaced_repetition.py` - Priority engine
+- `backend/app/services/inflection_service.py` - LLM inflection generation
+- `backend/scripts/migrate_spaced_repetition.py` - Migration script
 - `backend/requirements.txt` - Python dependencies
 - `backend/.env` - Environment configuration
 
@@ -210,17 +228,17 @@ POST /api/progress         - Track user progress
 
 ### Run Tests
 ```bash
-# All tests
-npx playwright test
+# DB + API (in-process, no server)
+python scripts/test_db_and_api.py --use-sqlite --in-process
 
-# Watch mode (recommended for development)
-npx playwright test --watch
+# DB only
+python scripts/test_db_and_api.py --db-only --use-sqlite
 
-# UI mode (best for debugging)
+# API only (server must be running)
+python scripts/test_db_and_api.py --api-only --base-url http://localhost:8001
+
+# Playwright E2E (if configured)
 npx playwright test --ui
-
-# Specific test
-npx playwright test tests/lesson-creation.spec.ts
 ```
 
 ### Test Structure
@@ -278,10 +296,11 @@ tests/[lesson-type].spec.ts
 docker logs finnish-backend-dev
 
 # Test endpoint directly
-curl http://localhost:8000/api/health
+curl http://localhost:8001/api/health/simple
+curl http://localhost:8001/api/exercise/next
 
-# Enable Flask debug mode
-FLASK_DEBUG=1 flask run
+# Run with reload
+python -m uvicorn app.main:app --reload --port 8001
 ```
 
 ### Fix styling issues
@@ -332,14 +351,14 @@ npm install
 ### API connection errors
 ```bash
 # Check backend is running
-curl http://localhost:8000/health
+curl http://localhost:8001/api/health/simple
 
-# Check VITE_API_URL in frontend
-echo $VITE_API_URL
+# Use in-process tests (no server needed)
+python scripts/test_db_and_api.py --use-sqlite --in-process
 
 # Update environment if needed
-# Frontend: .env.local
-# Backend: backend/.env
+# Frontend: .env.local (VITE_API_URL)
+# Backend: backend/.env (DATABASE_URL)
 ```
 
 ---
@@ -353,11 +372,12 @@ echo $VITE_API_URL
 - Use camelCase for variables/functions
 - Keep components under 300 lines
 
-### Python/Flask
+### Python/FastAPI
 - 4-space indentation
 - `snake_case` for functions/variables
 - Type hints on all function signatures
 - Docstrings for all functions
+- Async/await for I/O-bound operations
 - Follow PEP 8 style guide
 
 ### CSS/Tailwind
@@ -378,8 +398,8 @@ npm run preview     # Preview build locally
 npm install         # Install dependencies
 
 # Backend
-flask run           # Start Flask dev server
-flask shell         # Interactive Python shell
+python -m uvicorn app.main:app --reload --port 8001  # Start FastAPI
+python scripts/migrate_spaced_repetition.py --use-sqlite  # Migration
 pip freeze          # List installed packages
 
 # Docker

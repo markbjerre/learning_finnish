@@ -1,5 +1,6 @@
 """SQLAlchemy database models for Learning Finnish"""
 
+import uuid
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey, Boolean, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -14,6 +15,15 @@ def _table_args():
     if (settings.database_url or "").startswith("postgresql"):
         return {"schema": APP_SCHEMA}
     return {}
+
+
+def _fk(table_col: str) -> str:
+    """Return schema-qualified FK for PostgreSQL so cross-table refs resolve."""
+    from app.config import settings
+    if (settings.database_url or "").startswith("postgresql"):
+        return f"{APP_SCHEMA}.{table_col}"
+    return table_col
+
 
 TABLE_ARGS = _table_args()
 
@@ -71,7 +81,7 @@ class VocabularyList(Base):
     title = Column(String(255), index=True)
     description = Column(Text)
     difficulty = Column(SQLEnum(DifficultyEnum), default=DifficultyEnum.BEGINNER)
-    lesson_id = Column(String, ForeignKey("lessons.id"), index=True)
+    lesson_id = Column(String, ForeignKey(_fk("lessons.id")), index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -91,7 +101,7 @@ class VocabularyWord(Base):
     example_sentence = Column(Text)
     pronunciation = Column(String(255))
     difficulty = Column(SQLEnum(DifficultyEnum), default=DifficultyEnum.BEGINNER)
-    vocabulary_list_id = Column(String, ForeignKey("vocabulary_lists.id"), index=True)
+    vocabulary_list_id = Column(String, ForeignKey(_fk("vocabulary_lists.id")), index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -104,7 +114,7 @@ class Exercise(Base):
     __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
-    lesson_id = Column(String, ForeignKey("lessons.id"), index=True)
+    lesson_id = Column(String, ForeignKey(_fk("lessons.id")), index=True)
     type = Column(SQLEnum(ExerciseTypeEnum), index=True)
     question = Column(Text)
     options = Column(Text)  # JSON string
@@ -141,8 +151,8 @@ class LessonProgress(Base):
     __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), index=True)
-    lesson_id = Column(String, ForeignKey("lessons.id"), index=True)
+    user_id = Column(String, ForeignKey(_fk("users.id")), index=True)
+    lesson_id = Column(String, ForeignKey(_fk("lessons.id")), index=True)
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
     exercises_completed = Column(Integer, default=0)
@@ -161,9 +171,9 @@ class ExerciseResult(Base):
     __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), index=True)
-    exercise_id = Column(String, ForeignKey("exercises.id"), index=True)
-    lesson_progress_id = Column(String, ForeignKey("lesson_progress.id"), index=True)
+    user_id = Column(String, ForeignKey(_fk("users.id")), index=True)
+    exercise_id = Column(String, ForeignKey(_fk("exercises.id")), index=True)
+    lesson_progress_id = Column(String, ForeignKey(_fk("lesson_progress.id")), index=True)
     correct = Column(Boolean, index=True)
     user_answer = Column(Text)
     time_spent_seconds = Column(Integer)
@@ -190,8 +200,19 @@ class Word(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Spaced repetition fields
+    danish_translation = Column(String(255), nullable=True)
+    tags = Column(Text, nullable=True)  # JSON array of tags
+    priority = Column(Float, default=1.0, index=True)
+    times_served = Column(Integer, default=0)
+    total_score = Column(Float, default=0.0)
+    last_score = Column(Float, nullable=True)
+    last_served = Column(DateTime(timezone=True), nullable=True)
+
     # Relationships
     user_words = relationship("UserWord", back_populates="word", cascade="all, delete-orphan")
+    inflections = relationship("Inflection", back_populates="word", cascade="all, delete-orphan")
+    verb_forms = relationship("VerbForm", back_populates="word", cascade="all, delete-orphan")
 
 
 class UserWord(Base):
@@ -200,8 +221,8 @@ class UserWord(Base):
     __table_args__ = TABLE_ARGS
 
     id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), index=True)
-    word_id = Column(String, ForeignKey("words.id"), index=True)
+    user_id = Column(String, ForeignKey(_fk("users.id")), index=True)
+    word_id = Column(String, ForeignKey(_fk("words.id")), index=True)
     status = Column(SQLEnum(WordStatusEnum), default=WordStatusEnum.RECENT, index=True)
     proficiency = Column(Integer, default=0)  # 0-100 scale
     date_added = Column(DateTime(timezone=True), server_default=func.now())
@@ -213,3 +234,88 @@ class UserWord(Base):
     # Relationships
     user = relationship("User", back_populates="user_words")
     word = relationship("Word", back_populates="user_words")
+
+
+class Inflection(Base):
+    """Finnish noun/adjective inflections by case"""
+    __tablename__ = "inflections"
+    __table_args__ = TABLE_ARGS
+
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    word_id = Column(String, ForeignKey(_fk("words.id"), ondelete="CASCADE"), index=True)
+    case_name = Column(String(100), nullable=False)
+    singular = Column(String(255), nullable=True)
+    plural = Column(String(255), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    word = relationship("Word", back_populates="inflections")
+
+
+class VerbForm(Base):
+    """Finnish verb conjugations"""
+    __tablename__ = "verb_forms"
+    __table_args__ = TABLE_ARGS
+
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    word_id = Column(String, ForeignKey(_fk("words.id"), ondelete="CASCADE"), index=True)
+    form_name = Column(String(100), nullable=False)
+    form_value = Column(String(255), nullable=False)
+    tense = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    word = relationship("Word", back_populates="verb_forms")
+
+
+class Concept(Base):
+    """Grammatical concepts (cases, verb types, etc.)"""
+    __tablename__ = "concepts"
+    __table_args__ = TABLE_ARGS
+
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    examples = Column(Text, nullable=True)  # JSON
+    tags = Column(Text, nullable=True)  # JSON array
+
+    priority = Column(Float, default=1.0, index=True)
+    times_served = Column(Integer, default=0)
+    total_score = Column(Float, default=0.0)
+    last_score = Column(Float, nullable=True)
+    last_served = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class WordConcept(Base):
+    """Link words to concepts they exercise"""
+    __tablename__ = "word_concepts"
+    __table_args__ = TABLE_ARGS
+
+    word_id = Column(String, ForeignKey(_fk("words.id"), ondelete="CASCADE"), primary_key=True)
+    concept_id = Column(String, ForeignKey(_fk("concepts.id"), ondelete="CASCADE"), primary_key=True)
+
+
+class SpacedExerciseLog(Base):
+    """Log of spaced repetition exercises"""
+    __tablename__ = "spaced_exercise_log"
+    __table_args__ = TABLE_ARGS
+
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    exercise_type = Column(String(100), nullable=False)
+    level_used = Column(Integer, nullable=True)
+    words_used = Column(Text, nullable=True)  # JSON array of word IDs
+    concepts_used = Column(Text, nullable=True)  # JSON array of concept IDs
+    prompt_sent = Column(Text, nullable=True)
+    user_response = Column(Text, nullable=True)
+    ai_feedback = Column(Text, nullable=True)
+    word_scores = Column(Text, nullable=True)  # JSON
+    concept_scores = Column(Text, nullable=True)  # JSON
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AppSetting(Base):
+    """System settings (level, preferences)"""
+    __tablename__ = "app_settings"
+    __table_args__ = TABLE_ARGS
+
+    key = Column(String(255), primary_key=True)
+    value = Column(Text, nullable=False)  # JSON value

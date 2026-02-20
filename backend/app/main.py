@@ -9,13 +9,40 @@ import logging
 import os
 
 from app.config import settings
-from app.routers import health, lessons, vocabulary, progress, words
+from app.routers import health, lessons, vocabulary, progress, words, exercise, settings as settings_router, concepts
 from app.database import init_db, close_db
 
 logger = logging.getLogger(__name__)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
+
+
+class AuthMiddleware:
+    """Optional Bearer token auth for /api/* when FINNISH_API_KEY is set."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+
+        request = Request(scope)
+        if settings.finnish_api_key and request.url.path.startswith("/api/"):
+            if "/health" not in request.url.path:
+                auth = request.headers.get("Authorization", "")
+                key = auth.replace("Bearer ", "").strip()
+                if key != settings.finnish_api_key:
+                    response = JSONResponse(status_code=401, content={"error": "unauthorized"})
+                    await response(scope, receive, send)
+                    return
+
+        await self.app(scope, receive, send)
 
 
 @asynccontextmanager
@@ -44,6 +71,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Optional auth (add before CORS so auth runs first)
+if settings.finnish_api_key:
+    app.add_middleware(AuthMiddleware)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -59,6 +90,9 @@ app.include_router(lessons.router, prefix=settings.api_prefix)
 app.include_router(vocabulary.router, prefix=settings.api_prefix)
 app.include_router(progress.router, prefix=settings.api_prefix)
 app.include_router(words.router, prefix=settings.api_prefix)
+app.include_router(exercise.router, prefix=settings.api_prefix)
+app.include_router(settings_router.router, prefix=settings.api_prefix)
+app.include_router(concepts.router, prefix=settings.api_prefix)
 
 # Mount static files (for serving built React app)
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')

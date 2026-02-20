@@ -139,3 +139,53 @@ export interface UpdateWordStatusRequest {
   status: WordStatus       // New learning status
   proficiency?: number     // New proficiency level (0-100, optional)
 }
+
+// ============================================================================
+// Spaced repetition / exercise types
+// ============================================================================
+
+export interface SpacedStats {
+  total_words: number
+  mastered: number
+  learning: number
+  needs_work: number
+  mastery_percent: number
+  avg_score: number | null
+  total_exercises: number
+  total_concepts: number
+  level: number
+  streak_days?: number
+}
+
+export interface ExerciseHistoryEntry {
+  id: string
+  exercise_type: string
+  level_used: number | null
+  prompt_sent: string | null
+  user_response: string | null
+  ai_feedback: string | null
+  word_scores: Array<{ word_id: string; score: number; feedback?: string }>
+  concept_scores: Array<{ concept_id: string; score: number; feedback?: string }>
+  created_at: string | null
+}
+
+export interface Concept {
+  id: string
+  name: string
+  description?: string | null
+  examples?: unknown
+  tags?: string[]
+  priority?: number
+  times_served?: number
+}
+
+export interface SpacedWord {
+  id: string
+  finnish: string
+  danish?: string | null
+  english?: string | null
+  word_type: string
+  priority: number
+  times_served?: number
+  last_score?: number | null
+}
