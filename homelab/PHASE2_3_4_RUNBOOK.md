@@ -138,4 +138,4 @@ systemctl status finnish-db-tunnel
 PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -f /path/to/schema.sql
 ```
 
-See `Update_learning_finnish_2_0_continued.md` for full schema SQL.
+See `archive/Update_learning_finnish_2_0_continued.md` for full schema SQL (superseded by Tailscale).

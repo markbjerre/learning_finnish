@@ -40,7 +40,7 @@ cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 
 ## Documentation
 
-- **UPDATE_SUMMARY.md** — Deployment status, spaced repetition endpoints, migration
+- **UPDATE_SUMMARY.md** — API reference, deployment, scripts
 - **Spaced_repetition_instruction.md** — Implementation spec for spaced repetition
 - **Full_finnish_openclaw_plan.md** — OpenClaw architecture & plan
 - **finnish_2_0_instructions.md** — DB migration + Tailscale setup

@@ -1,6 +1,6 @@
 #!/bin/bash
 # DuckDNS updater for markbj-homelab.duckdns.org
-# Run via cron: */5 * * * * /home/markbj/duckdns-update.sh
+# Run via cron: */5 * * * * /path/to/duckdns-update.sh (use full path to script)
 
 # Load token from .duckdns.env (same dir as script, or ~/.duckdns.env)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

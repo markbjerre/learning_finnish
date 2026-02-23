@@ -40,21 +40,21 @@ sudo chmod 700 /mnt/seagate_8TB/finnish/postgres_data
 
 **Option A: From Windows (PowerShell), copy via SCP:**
 ```powershell
-# Create target dir first via SSH, then copy
-ssh markbj@192.168.0.252 "mkdir -p /home/markbj/homelab/apps/finnish-db"
-scp "c:\Users\Mark BJ\Desktop\Code Projects\learning_finnish\homelab\docker-compose.yml" markbj@192.168.0.252:/home/markbj/homelab/apps/finnish-db/
+# Create target dir on homelab, then copy. Replace <PROJECT_ROOT> with your path to learning_finnish
+ssh markbj@192.168.0.252 "mkdir -p \$HOME/homelab/apps/finnish-db"
+scp "<PROJECT_ROOT>\homelab\docker-compose.yml" markbj@192.168.0.252:~/homelab/apps/finnish-db/
 ```
 
 **Option B: Create manually on homelab** (run after step 4):
 ```bash
-mkdir -p /home/markbj/homelab/apps/finnish-db
-nano /home/markbj/homelab/apps/finnish-db/docker-compose.yml
+mkdir -p $HOME/homelab/apps/finnish-db
+nano $HOME/homelab/apps/finnish-db/docker-compose.yml
 # Paste content from learning_finnish/homelab/docker-compose.yml
 ```
 
 ### 6. Create .env with strong password
 ```bash
-cd /home/markbj/homelab/apps/finnish-db
+cd $HOME/homelab/apps/finnish-db
 FINNISH_PW=$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 24)
 echo "FINNISH_DB_PASSWORD=${FINNISH_PW}" > .env
 chmod 600 .env
@@ -64,7 +64,7 @@ cat .env
 echo "=================================================="
 ```
 
-### 7. Start the container
+### 7. Start the container (from finnish-db dir)
 ```bash
 docker compose up -d
 sleep 5

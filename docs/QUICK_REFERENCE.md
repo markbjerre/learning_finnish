@@ -257,15 +257,15 @@ In the project root:
 
 ---
 
-## File Locations (Absolute Paths)
+## File Locations (relative to project root)
 
 | File | Path |
 |------|------|
-| App.tsx | `/mnt/c/Users/Mark BJ/Desktop/Code Projects/learning_finnish/src/App.tsx` |
-| DesignSelector.tsx | `/mnt/c/Users/Mark BJ/Desktop/Code Projects/learning_finnish/src/pages/DesignSelector.tsx` |
-| ModernSaaSDesign.tsx | `/mnt/c/Users/Mark BJ/Desktop/Code Projects/learning_finnish/src/components/designs/ModernSaaSDesign.tsx` |
-| MinimalistElegantDesign.tsx | `/mnt/c/Users/Mark BJ/Desktop/Code Projects/learning_finnish/src/components/designs/MinimalistElegantDesign.tsx` |
-| TechForwardInteractiveDesign.tsx | `/mnt/c/Users/Mark BJ/Desktop/Code Projects/learning_finnish/src/components/designs/TechForwardInteractiveDesign.tsx` |
+| App.tsx | `src/App.tsx` |
+| DesignSelector.tsx | `src/pages/DesignSelector.tsx` |
+| ModernSaaSDesign.tsx | `src/components/designs/ModernSaaSDesign.tsx` |
+| MinimalistElegantDesign.tsx | `src/components/designs/MinimalistElegantDesign.tsx` |
+| TechForwardInteractiveDesign.tsx | `src/components/designs/TechForwardInteractiveDesign.tsx` |
 
 ---
 

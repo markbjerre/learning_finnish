@@ -4,7 +4,7 @@
 
 ### 1. Start the App
 ```bash
-cd /mnt/c/Users/Mark\ BJ/Desktop/Code\ Projects/learning_finnish
+cd /path/to/learning_finnish   # or use $(pwd) if already in project
 npm run dev
 ```
 
