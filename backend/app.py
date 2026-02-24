@@ -29,13 +29,22 @@ def health():
     return {"status": "ok"}, 200
 
 @app.route('/')
+@app.route('/finnish')
+@app.route('/finnish/')
 def serve_root():
-    """Serve index.html for root path"""
+    """Serve index.html for root path (with and without /finnish prefix for local dev)"""
     return send_from_directory('static', 'index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    """Serve static files or fall back to index.html for SPA routing"""
+    """Serve static files or fall back to index.html for SPA routing.
+    Handles both direct access (localhost:8000) and Traefik-stripped paths (production).
+    When running locally without Traefik, /finnish/<path> is stripped here.
+    """
+    # Strip /finnish/ prefix if present (local dev without Traefik)
+    if path.startswith('finnish/'):
+        path = path[len('finnish/'):]
+
     file_path = os.path.join('static', path)
     if os.path.isfile(file_path):
         return send_from_directory('static', path)
