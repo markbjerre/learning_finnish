@@ -7,7 +7,7 @@ Mixed
 | Action | Command |
 |--------|---------|
 | **Main entry** | `backend/app.py` (FastAPI) + `src/` (React frontend) |
-| **Run locally** | `./scripts/dev-finnish.sh` — starts backend :8000, frontend :5173 |
+| **Run locally** | `./scripts/dev-finnish.sh` (Linux) or `.\scripts\run-backend-local.ps1` (SQLite) or `.\scripts\run-backend-homelab.ps1` (homelab via Tailscale) — backend :8001 |
 | **Run tests** | `./scripts/test.sh` or `npm run build` |
 
 ## Documentation

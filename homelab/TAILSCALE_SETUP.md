@@ -80,11 +80,11 @@ Update the homelab docker-compose to bind to 0.0.0.0:5433 (Tailscale network is 
 From VPS:
 
 ```bash
-PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h dobbybrain -p 5433 -U learning_finnish -d learning_finnish -c "SELECT version();"
+PGPASSWORD=$FINNISH_DB_PASSWORD psql -h dobbybrain -p 5433 -U learning_finnish -d learning_finnish -c "SELECT version();"
 ```
 
 ## Completed Setup
 
 - **Homelab hostname:** dobbybrain (100.83.229.69)
 - **VPS hostname:** srv1070976 (100.77.253.18)
-- **Connection string:** `postgresql+asyncpg://learning_finnish:PASSWORD@dobbybrain:5433/learning_finnish`
+- **Connection string:** `postgresql+asyncpg://learning_finnish:${FINNISH_DB_PASSWORD}@dobbybrain:5433/learning_finnish` (from backend/.env)

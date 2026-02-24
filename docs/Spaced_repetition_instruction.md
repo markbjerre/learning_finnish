@@ -34,7 +34,7 @@ The project has a working FastAPI backend with these key files:
 - String UUIDs for all PKs (not integers)
 - Async SQLAlchemy throughout
 - AI service uses OpenAI with mock fallback
-- Database URL: `postgresql+asyncpg://learning_finnish:aZxa3LcafGOFgYkZyrURIwiO@dobbybrain:5433/learning_finnish`
+- Database URL: `postgresql+asyncpg://learning_finnish:${FINNISH_DB_PASSWORD}@dobbybrain:5433/learning_finnish` (from backend/.env)
 
 ---
 

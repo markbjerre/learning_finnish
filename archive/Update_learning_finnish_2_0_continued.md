@@ -23,7 +23,7 @@ Phase 1 is done. PostgreSQL is running on the homelab:
 | **DB port** | `127.0.0.1:5433` on homelab |
 | **DB name** | `learning_finnish` |
 | **DB user** | `learning_finnish` |
-| **DB password** | `aZxa3LcafGOFgYkZyrURIwiO` |
+| **DB password** | From `backend/.env` FINNISH_DB_PASSWORD |
 | **Compose path** | `/home/markbj/homelab/apps/finnish-db/` |
 
 The VPS cannot currently reach the homelab. We need to:
@@ -213,7 +213,7 @@ sleep 3
 # Install psql if not present
 which psql || apt install -y postgresql-client
 
-PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -c "SELECT version();"
+PGPASSWORD=$FINNISH_DB_PASSWORD psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -c "SELECT version();"
 ```
 
 **Expected:** PostgreSQL version string. If this works, the tunnel is functional.
@@ -294,7 +294,7 @@ systemctl status finnish-db-tunnel
 ss -tlnp | grep 5433
 
 # Test DB connection
-PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -c "SELECT version();"
+PGPASSWORD=$FINNISH_DB_PASSWORD psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -c "SELECT version();"
 ```
 
 **If the service fails to start:**
@@ -314,7 +314,7 @@ Show errors to the user.
 On the VPS, connect through the tunnel and run a full test:
 
 ```bash
-PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish << 'SQL'
+PGPASSWORD=$FINNISH_DB_PASSWORD psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish << 'SQL'
 -- Test basic connectivity
 SELECT version();
 SELECT current_database(), current_user, inet_server_addr(), inet_server_port();
@@ -334,7 +334,7 @@ SQL
 Still connected to the DB from the VPS:
 
 ```bash
-PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish << 'SQL'
+PGPASSWORD=$FINNISH_DB_PASSWORD psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish << 'SQL'
 
 -- Core vocabulary
 CREATE TABLE IF NOT EXISTS words (
@@ -445,7 +445,7 @@ SQL
 The FastAPI backend on the VPS should use:
 
 ```
-DATABASE_URL=postgresql+asyncpg://learning_finnish:aZxa3LcafGOFgYkZyrURIwiO@127.0.0.1:5433/learning_finnish
+DATABASE_URL=postgresql+asyncpg://learning_finnish:$FINNISH_DB_PASSWORD@127.0.0.1:5433/learning_finnish
 ```
 
 ---
@@ -466,11 +466,11 @@ ss -tlnp | grep 5433
 # Expected: LISTEN on 127.0.0.1:5433
 
 # 3. Can connect to DB
-PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -c "SELECT COUNT(*) FROM words;"
+PGPASSWORD=$FINNISH_DB_PASSWORD psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -c "SELECT COUNT(*) FROM words;"
 # Expected: count = 0 (empty table, ready for data)
 
 # 4. Schema is correct
-PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -c "\dt"
+PGPASSWORD=$FINNISH_DB_PASSWORD psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -c "\dt"
 # Expected: 7 tables listed
 
 # 5. Tunnel auto-restarts

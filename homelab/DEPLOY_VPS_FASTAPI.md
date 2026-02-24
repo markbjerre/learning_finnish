@@ -28,8 +28,8 @@ fi
 Edit the main compose `.env` (e.g. `/root/.env` or wherever your compose reads it):
 
 ```bash
-# Add or update:
-FINNISH_DATABASE_URL=postgresql+asyncpg://learning_finnish:aZxa3LcafGOFgYkZyrURIwiO@dobbybrain:5433/learning_finnish
+# Add or update (password from learning_finnish/backend/.env FINNISH_DB_PASSWORD):
+FINNISH_DATABASE_URL=postgresql+asyncpg://learning_finnish:${FINNISH_DB_PASSWORD}@dobbybrain:5433/learning_finnish
 ```
 
 > **Note:** Use `dobbybrain` (Tailscale hostname) or the homelab Tailscale IP if hostname resolution fails.
@@ -72,8 +72,9 @@ cd Finnish-Learning
 ### 2. Create .env
 
 ```bash
+# Create .env with DATABASE_URL (get password from backend/.env FINNISH_DB_PASSWORD)
 cat > .env << 'EOF'
-DATABASE_URL=postgresql+asyncpg://learning_finnish:aZxa3LcafGOFgYkZyrURIwiO@dobbybrain:5433/learning_finnish
+DATABASE_URL=postgresql+asyncpg://learning_finnish:YOUR_FINNISH_DB_PASSWORD@dobbybrain:5433/learning_finnish
 OPENAI_API_KEY=
 EOF
 ```
@@ -109,7 +110,7 @@ curl -s https://ai-vaerksted.cloud/finnish/api/health/simple
 ### Test DB from VPS
 
 ```bash
-PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h dobbybrain -p 5433 -U learning_finnish -d learning_finnish -c "SELECT 1"
+PGPASSWORD=$FINNISH_DB_PASSWORD psql -h dobbybrain -p 5433 -U learning_finnish -d learning_finnish -c "SELECT 1"
 ```
 
 ---

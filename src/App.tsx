@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import Home from './pages/Home'
+import AddWordsPage from './pages/AddWordsPage'
+import WordsPage from './pages/WordsPage'
 import Lessons from './pages/Lessons'
 import Dashboard from './pages/Dashboard'
 import Concepts from './pages/Concepts'
@@ -63,6 +65,8 @@ export default function App() {
       <Router basename={basename}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/add-words" element={<AddWordsPage />} />
+          <Route path="/words" element={<WordsPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/concepts" element={<Concepts />} />
           <Route path="/lessons" element={<Lessons />} />

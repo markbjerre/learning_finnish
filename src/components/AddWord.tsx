@@ -46,51 +46,61 @@ export default function AddWord() {
     }
   }
 
+  const inputClass = 'w-full px-4 py-2 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-sky-500 focus:border-sky-500'
+  const labelClass = 'block text-sm font-medium text-slate-300 mb-1'
+
   return (
-    <div className="bg-white rounded-lg shadow p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Word (Spaced Repetition)</h2>
-      <p className="text-gray-600 mb-6">
+    <div
+      className="rounded-2xl p-8"
+      style={{
+        background: 'rgba(255, 255, 255, 0.03)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+      }}
+    >
+      <h2 className="text-2xl font-bold text-white mb-6">Add Word (Spaced Repetition)</h2>
+      <p className="text-slate-400 mb-6">
         Add a word directly to the vocabulary. Inflections are generated automatically when OpenAI is configured.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Finnish *</label>
+          <label className={labelClass}>Finnish *</label>
           <input
             type="text"
             value={finnish}
             onChange={(e) => setFinnish(e.target.value)}
             placeholder="talo"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className={inputClass}
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Danish</label>
+          <label className={labelClass}>Danish</label>
           <input
             type="text"
             value={danish}
             onChange={(e) => setDanish(e.target.value)}
             placeholder="hus"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className={inputClass}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">English</label>
+          <label className={labelClass}>English</label>
           <input
             type="text"
             value={english}
             onChange={(e) => setEnglish(e.target.value)}
             placeholder="house"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className={inputClass}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <label className={labelClass}>Type</label>
           <select
             value={wordType}
             onChange={(e) => setWordType(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className={inputClass}
           >
             <option value="noun">Noun</option>
             <option value="verb">Verb</option>
@@ -103,26 +113,26 @@ export default function AddWord() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+          className="px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-500 disabled:opacity-50 transition-colors"
         >
           {isSubmitting ? 'Adding...' : 'Add Word'}
         </button>
       </form>
 
       {error && (
-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>
+        <div className="mt-4 p-4 bg-red-900/30 border border-red-500/50 rounded-lg text-red-300">{error}</div>
       )}
 
       {result && (
-        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div className="mt-6 p-4 bg-emerald-900/30 border border-emerald-500/50 rounded-lg text-emerald-300">
           {result.status === 'created' && (
-            <p className="text-green-800 font-medium">Added &quot;{result.finnish}&quot;</p>
+            <p className="font-medium">Added &quot;{result.finnish}&quot;</p>
           )}
           {result.status === 'exists' && (
-            <p className="text-amber-800">Word &quot;{result.finnish}&quot; already exists.</p>
+            <p className="text-amber-300">Word &quot;{result.finnish}&quot; already exists.</p>
           )}
           {result.inflections_generated && (
-            <p className="text-sm text-green-700 mt-1">
+            <p className="text-sm mt-1 opacity-90">
               Generated {result.inflections_generated.inflections} inflections, {result.inflections_generated.verb_forms} verb forms
             </p>
           )}
@@ -131,29 +141,29 @@ export default function AddWord() {
 
       {wordId && result?.status === 'created' && (
         <div className="mt-6">
-          <h3 className="font-semibold text-gray-900 mb-3">Inflections</h3>
+          <h3 className="font-semibold text-white mb-3">Inflections</h3>
           {inflectionsLoading ? (
-            <p className="text-gray-500">Loading inflections...</p>
+            <p className="text-slate-500">Loading inflections...</p>
           ) : inflections ? (
             <div className="space-y-4">
               {inflections.inflections?.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-600 mb-2">Cases</h4>
+                  <h4 className="text-sm font-medium text-slate-400 mb-2">Cases</h4>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-2">Case</th>
-                          <th className="text-left py-2">Singular</th>
-                          <th className="text-left py-2">Plural</th>
+                        <tr className="border-b border-slate-600">
+                          <th className="text-left py-2 text-slate-400">Case</th>
+                          <th className="text-left py-2 text-slate-400">Singular</th>
+                          <th className="text-left py-2 text-slate-400">Plural</th>
                         </tr>
                       </thead>
                       <tbody>
                         {inflections.inflections.map((i: { case_name: string; singular: string; plural: string }, idx: number) => (
-                          <tr key={idx} className="border-b border-gray-100">
-                            <td className="py-2">{i.case_name}</td>
-                            <td className="py-2">{i.singular || '—'}</td>
-                            <td className="py-2">{i.plural || '—'}</td>
+                          <tr key={idx} className="border-b border-slate-700/50">
+                            <td className="py-2 text-slate-300">{i.case_name}</td>
+                            <td className="py-2 text-slate-300">{i.singular || '—'}</td>
+                            <td className="py-2 text-slate-300">{i.plural || '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -163,22 +173,22 @@ export default function AddWord() {
               )}
               {inflections.verb_forms?.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-600 mb-2">Verb Forms</h4>
+                  <h4 className="text-sm font-medium text-slate-400 mb-2">Verb Forms</h4>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-2">Form</th>
-                          <th className="text-left py-2">Value</th>
-                          <th className="text-left py-2">Tense</th>
+                        <tr className="border-b border-slate-600">
+                          <th className="text-left py-2 text-slate-400">Form</th>
+                          <th className="text-left py-2 text-slate-400">Value</th>
+                          <th className="text-left py-2 text-slate-400">Tense</th>
                         </tr>
                       </thead>
                       <tbody>
                         {inflections.verb_forms.map((v: { form_name: string; form_value: string; tense: string }, idx: number) => (
-                          <tr key={idx} className="border-b border-gray-100">
-                            <td className="py-2">{v.form_name}</td>
-                            <td className="py-2">{v.form_value}</td>
-                            <td className="py-2">{v.tense || '—'}</td>
+                          <tr key={idx} className="border-b border-slate-700/50">
+                            <td className="py-2 text-slate-300">{v.form_name}</td>
+                            <td className="py-2 text-slate-300">{v.form_value}</td>
+                            <td className="py-2 text-slate-300">{v.tense || '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -187,7 +197,7 @@ export default function AddWord() {
                 </div>
               )}
               {(!inflections.inflections?.length && !inflections.verb_forms?.length) && (
-                <p className="text-gray-500">No inflections yet. Enable OpenAI for auto-generation.</p>
+                <p className="text-slate-500">No inflections yet. Enable OpenAI for auto-generation.</p>
               )}
             </div>
           ) : null}

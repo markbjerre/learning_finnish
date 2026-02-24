@@ -1,5 +1,5 @@
 -- Finnish Learning DB Schema
--- Run: PGPASSWORD=aZxa3LcafGOFgYkZyrURIwiO psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -f finnish_schema.sql
+-- Run: PGPASSWORD=$FINNISH_DB_PASSWORD psql -h 127.0.0.1 -p 5433 -U learning_finnish -d learning_finnish -f finnish_schema.sql
 
 -- Core vocabulary
 CREATE TABLE IF NOT EXISTS words (
