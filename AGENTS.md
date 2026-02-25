@@ -72,6 +72,23 @@ Read in order:
 
 ---
 
+## AI Services
+
+| File | Role |
+|------|------|
+| `backend/app/services/ai_service.py` | MiniMax/OpenAI client init, definitions, grammatical forms, example sentences |
+| `backend/app/services/inflection_service.py` | Generates & stores noun cases (12) and verb forms (16) via LLM |
+| `backend/app/config.py` | `minimax_api_key`, `openai_api_key` settings |
+| `backend/.env` | Secret keys — not committed |
+
+**Inflection flow:** `POST /api/words/add` → `_add_word_impl()` → `generate_and_store_inflections()` → stores to `app.inflections` / `app.verb_forms`
+
+**MiniMax quirk:** Model returns `<think>…</think>` reasoning blocks before JSON. Both service files have `_extract_json()` that strips these with a regex before parsing.
+
+**Key config:** MiniMax key lives in `backend/.env` as `MINIMAX_API_KEY`. If missing, inflections are silently skipped (returns `{"inflections":0,"verb_forms":0}`).
+
+---
+
 ## Database
 
 | Detail | Value |
