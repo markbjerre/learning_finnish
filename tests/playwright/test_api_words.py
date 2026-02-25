@@ -46,18 +46,18 @@ def test_get_words():
 
 
 def test_search_words():
-    """POST /words/search returns 200 with results structure."""
-    status, data = _post("/words/search", {"query": "talo", "limit": 5})
+    """POST /words/search?finnish_word=talo returns 200 with word data."""
+    status, data = _post("/words/search?finnish_word=talo", {})
     assert status == 200, f"POST /words/search returned {status}: {data}"
-    assert "results" in data or isinstance(data, list), f"Unexpected shape: {data}"
-    print(f"✓ test_search_words passed")
+    assert "finnish_word" in data, f"Unexpected shape: {data}"
+    print(f"✓ test_search_words passed (word={data.get('finnish_word')})")
 
 
 def test_add_word_validation():
-    """POST /words/add with missing fields returns 422 (validation error)."""
+    """POST /words/add with missing 'finnish' returns 400."""
     status, data = _post("/words/add", {})
-    assert status == 422, f"Expected 422 validation error, got {status}: {data}"
-    print(f"✓ test_add_word_validation passed (got expected 422)")
+    assert status == 400, f"Expected 400, got {status}: {data}"
+    print(f"✓ test_add_word_validation passed (got expected 400)")
 
 
 if __name__ == "__main__":

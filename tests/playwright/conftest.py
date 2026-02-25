@@ -9,4 +9,6 @@ Set API_BASE_URL to target different environments:
 import os
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8001")
-API_BASE = API_BASE_URL.rstrip("/")
+# All routes are under /api — append it unless caller already included it
+_base = API_BASE_URL.rstrip("/")
+API_BASE = _base if _base.endswith("/api") else _base + "/api"
