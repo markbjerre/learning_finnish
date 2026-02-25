@@ -5,6 +5,7 @@ Called when a new word is added via API or OpenClaw.
 
 import json
 import logging
+import re
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,15 @@ from app.models_db import Word, Inflection, VerbForm
 from app.services.ai_service import ai_service
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_json(content: str) -> str:
+    """Strip <think>...</think> reasoning blocks and code fences, return clean JSON string."""
+    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+    if content.startswith("```"):
+        content = content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+    return content
+
 
 NOUN_CASES = [
     "nominatiivi", "genetiivi", "partitiivi", "inessiivi", "elatiivi",
@@ -29,11 +39,9 @@ async def generate_and_store_inflections(db: AsyncSession, word: Word) -> dict:
     """
     pos = (word.part_of_speech or "noun").lower()
 
-    if not getattr(ai_service, "use_openai", False) or not getattr(
-        ai_service, "openai_client", None
-    ):
+    if not getattr(ai_service, "use_ai", False) or not getattr(ai_service, "client", None):
         logger.info(
-            f"OpenAI not configured, skipping inflection generation for '{word.finnish_word}'"
+            f"No AI API configured, skipping inflection generation for '{word.finnish_word}'"
         )
         return {"inflections": 0, "verb_forms": 0}
 
@@ -65,19 +73,17 @@ Return ONLY this JSON (no other text):
 }}"""
 
     try:
-        response = await ai_service.openai_client.chat.completions.create(
-            model="gpt-4o-mini",
+        response = await ai_service.client.chat.completions.create(
+            model=ai_service.model_name,
             messages=[
                 {"role": "system", "content": "You are a Finnish grammar expert. Return only valid JSON."},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=800,
+            max_tokens=2000,
         )
 
-        content = response.choices[0].message.content.strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        content = _extract_json(response.choices[0].message.content or "")
 
         data = json.loads(content)
         inflections = data.get("inflections", [])
@@ -127,19 +133,17 @@ Return ONLY this JSON (no other text):
 }}"""
 
     try:
-        response = await ai_service.openai_client.chat.completions.create(
-            model="gpt-4o-mini",
+        response = await ai_service.client.chat.completions.create(
+            model=ai_service.model_name,
             messages=[
                 {"role": "system", "content": "You are a Finnish grammar expert. Return only valid JSON."},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=800,
+            max_tokens=2000,
         )
 
-        content = response.choices[0].message.content.strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        content = _extract_json(response.choices[0].message.content or "")
 
         data = json.loads(content)
         forms = data.get("verb_forms", [])

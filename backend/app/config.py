@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     # Feature Flags
     enable_ai_practice: bool = False
     openai_api_key: Optional[str] = None
+    minimax_api_key: Optional[str] = None
 
     # Optional API key for OpenClaw / external clients (Bearer token)
     finnish_api_key: Optional[str] = None
