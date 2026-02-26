@@ -1,7 +1,7 @@
 """SQLAlchemy database models for Learning Finnish"""
 
 import uuid
-from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey, Boolean, Enum as SQLEnum
+from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey, Boolean, Enum as SQLEnum, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base, APP_SCHEMA
@@ -143,6 +143,7 @@ class User(Base):
     progress_entries = relationship("LessonProgress", back_populates="user", cascade="all, delete-orphan")
     exercise_results = relationship("ExerciseResult", back_populates="user", cascade="all, delete-orphan")
     user_words = relationship("UserWord", back_populates="user", cascade="all, delete-orphan")
+    concept_progress = relationship("UserConceptProgress", back_populates="user", cascade="all, delete-orphan")
 
 
 class LessonProgress(Base):
@@ -244,6 +245,7 @@ class Inflection(Base):
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     word_id = Column(String, ForeignKey(_fk("words.id"), ondelete="CASCADE"), index=True)
     case_name = Column(String(100), nullable=False)
+    degree = Column(String(50), nullable=True)  # NULL=base, 'comparative', 'superlative'
     singular = Column(String(255), nullable=True)
     plural = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
@@ -273,9 +275,12 @@ class Concept(Base):
 
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(255), nullable=False)
+    name_fi = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
     examples = Column(Text, nullable=True)  # JSON
     tags = Column(Text, nullable=True)  # JSON array
+    frequency = Column(Integer, nullable=True)  # 1-5: how common in everyday Finnish
+    difficulty = Column(Integer, nullable=True)  # 1-5: how hard for learners
 
     priority = Column(Float, default=1.0, index=True)
     times_served = Column(Integer, default=0)
@@ -292,6 +297,32 @@ class WordConcept(Base):
 
     word_id = Column(String, ForeignKey(_fk("words.id"), ondelete="CASCADE"), primary_key=True)
     concept_id = Column(String, ForeignKey(_fk("concepts.id"), ondelete="CASCADE"), primary_key=True)
+
+
+def _ucp_table_args():
+    """UserConceptProgress needs UniqueConstraint + schema dict as a tuple."""
+    from app.config import settings
+    uc = UniqueConstraint("user_id", "concept_id", name="uq_user_concept")
+    if (settings.database_url or "").startswith("postgresql"):
+        return (uc, {"schema": APP_SCHEMA})
+    return (uc, {})
+
+
+class UserConceptProgress(Base):
+    """Track per-user mastery of grammatical concepts (gamified 0-10 XP bar)"""
+    __tablename__ = "user_concept_progress"
+    __table_args__ = _ucp_table_args()
+
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey(_fk("users.id"), ondelete="CASCADE"), nullable=False, index=True)
+    concept_id = Column(String, ForeignKey(_fk("concepts.id"), ondelete="CASCADE"), nullable=False, index=True)
+    mastery = Column(Float, default=0.0)  # 0.00 - 10.00
+    exercise_count = Column(Integer, default=0)
+    last_exercised = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="concept_progress")
+    concept = relationship("Concept")
 
 
 class SpacedExerciseLog(Base):

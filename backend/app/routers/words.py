@@ -23,7 +23,12 @@ from app.models import (
     ExampleSentence,
 )
 from app.services.ai_service import ai_service
-from app.services.inflection_service import generate_and_store_inflections
+from app.services.inflection_service import (
+    generate_and_store_inflections,
+    generate_batch_inflections,
+    normalize_word,
+    normalize_word_batch,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -166,10 +171,71 @@ async def bulk_add_words(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Bulk add words from CSV-like data.
-    Body: {"rows": [["finnish", "danish", "english", "word_type"], ...]}
-    or {"csv": "finnish,danish,english,word_type\\ntalo,hus,house,noun\\n..."}
+    Bulk add words. Supports multiple input formats:
+
+    Fully specified (skip normalization):
+      {"rows": [["finnish", "danish", "english", "word_type"], ...]}
+      {"csv": "finnish,danish,english,word_type\\ntalo,hus,house,noun\\n..."}
+
+    Words only (LLM normalizes — any language):
+      {"words": ["hus", "to run", "juosta", "kaunis"]}
+      Optional: {"words": [...], "source_lang": "da"}
     """
+    # --- New: simple word list (any language) ---
+    word_list = request.get("words")
+    if word_list and isinstance(word_list, list):
+        source_lang = request.get("source_lang")
+        inputs = [{"text": str(w).strip(), "source_lang": source_lang} for w in word_list if str(w).strip()]
+        if not inputs:
+            raise HTTPException(status_code=400, detail="No valid words provided")
+
+        norms = await normalize_word_batch(inputs)
+
+        created = 0
+        exists = 0
+        invalid = []
+        new_words = []
+
+        for inp, norm in zip(inputs, norms):
+            if not norm.get("valid"):
+                invalid.append({"input": inp["text"], "error": norm.get("error")})
+                continue
+
+            finnish = norm["finnish"]
+            stmt = select(Word).where(Word.finnish_word.ilike(finnish))
+            result = await db.execute(stmt)
+            existing = result.scalars().first()
+            if existing:
+                exists += 1
+                continue
+
+            word = Word(
+                id=str(uuid.uuid4()),
+                finnish_word=finnish,
+                danish_translation=norm.get("danish"),
+                english_translation=norm.get("english") or finnish,
+                part_of_speech=norm.get("word_type", "noun"),
+                tags=json.dumps([]),
+                priority=1.0,
+            )
+            db.add(word)
+            await db.flush()
+            new_words.append(word)
+            created += 1
+
+        inflection_result = {"inflections": 0, "verb_forms": 0, "skipped": 0}
+        if new_words:
+            inflection_result = await generate_batch_inflections(db, new_words)
+
+        await db.commit()
+        return {
+            "created": created,
+            "exists": exists,
+            "invalid": invalid[:20],
+            "inflections_generated": inflection_result,
+        }
+
+    # --- Legacy: CSV/rows format (assumed Finnish with all fields) ---
     rows = request.get("rows")
     if not rows and "csv" in request:
         import csv
@@ -178,22 +244,56 @@ async def bulk_add_words(
         reader = csv.reader(io.StringIO(csv_text))
         rows = list(reader)
     if not rows or not isinstance(rows, list):
-        raise HTTPException(status_code=400, detail="Provide 'rows' array or 'csv' string")
+        raise HTTPException(status_code=400, detail="Provide 'words' list, 'rows' array, or 'csv' string")
+
+    # Check if rows lack word_type — if so, normalize to get types
+    needs_normalize = any(
+        len(row) < 4 or not (row[3] or "").strip()
+        for row in rows
+        if row and isinstance(row, (list, tuple)) and len(row) > 0 and (row[0] or "").strip()
+    )
+
+    if needs_normalize:
+        inputs = []
+        for row in rows:
+            if not row or not isinstance(row, (list, tuple)):
+                continue
+            text = (row[0] or "").strip() if len(row) > 0 else ""
+            if text:
+                inputs.append({"text": text, "source_lang": "fi"})
+        if inputs:
+            norms = await normalize_word_batch(inputs)
+            norm_map = {n["finnish"].lower(): n for n in norms if n.get("valid") and n.get("finnish")}
+        else:
+            norm_map = {}
+    else:
+        norm_map = {}
 
     created = 0
     exists = 0
     errors = []
+    new_words = []
 
     for i, row in enumerate(rows):
         if not row or not isinstance(row, (list, tuple)):
             continue
-        # Support: [finnish] or [finnish, danish] or [finnish, danish, english] or [finnish, danish, english, word_type]
         finnish = (row[0] or "").strip() if len(row) > 0 else ""
         if not finnish:
             continue
         danish = (row[1] or "").strip() if len(row) > 1 else None
         english = (row[2] or "").strip() if len(row) > 2 else finnish
-        word_type = (row[3] or "noun").strip().lower() if len(row) > 3 else "noun"
+        word_type = (row[3] or "").strip().lower() if len(row) > 3 else ""
+
+        # Fill missing fields from normalization
+        if not word_type and norm_map:
+            norm = norm_map.get(finnish.lower(), {})
+            word_type = norm.get("word_type", "noun")
+            if not danish:
+                danish = norm.get("danish")
+            if not english or english == finnish:
+                english = norm.get("english", finnish)
+
+        word_type = word_type or "noun"
 
         try:
             stmt = select(Word).where(Word.finnish_word.ilike(finnish))
@@ -213,37 +313,90 @@ async def bulk_add_words(
             )
             db.add(word)
             await db.flush()
-            await generate_and_store_inflections(db, word)
+            new_words.append(word)
             created += 1
         except Exception as e:
             errors.append({"row": i + 1, "word": finnish, "error": str(e)})
+
+    # Batch generate inflections in grouped LLM calls instead of one per word
+    inflection_result = {"inflections": 0, "verb_forms": 0, "skipped": 0}
+    if new_words:
+        inflection_result = await generate_batch_inflections(db, new_words)
 
     await db.commit()
     return {
         "created": created,
         "exists": exists,
         "errors": errors[:20],
+        "inflections_generated": inflection_result,
     }
 
 
 async def _add_word_impl(request: dict, db: AsyncSession):
-    """Shared implementation for POST /words and POST /words/add."""
-    finnish = request.get("finnish", "").strip()
-    if not finnish:
-        raise HTTPException(status_code=400, detail="finnish is required")
+    """
+    Shared implementation for POST /words and POST /words/add.
 
+    Accepts input in Finnish, Danish, or English. The LLM normalizes:
+    - Detects language and translates to Finnish if needed
+    - Corrects spelling and finds the base form (lemma)
+    - Identifies word type automatically
+
+    Body: {"word": "hus"} or {"finnish": "talo", "danish": "hus", ...}
+    Optional: "source_lang": "da"|"en"|"fi" as a hint
+    """
+    # Support both "word" (new: any language) and "finnish" (legacy: assumed Finnish)
+    input_text = (request.get("word") or request.get("finnish") or "").strip()
+    if not input_text:
+        raise HTTPException(status_code=400, detail="'word' or 'finnish' is required")
+
+    source_lang = request.get("source_lang")
+
+    # If caller already provided finnish + word_type, skip normalization
+    has_finnish = bool(request.get("finnish"))
+    has_word_type = bool(request.get("word_type"))
+    skip_normalize = has_finnish and has_word_type
+
+    if skip_normalize:
+        finnish = request["finnish"].strip()
+        danish = request.get("danish")
+        english = request.get("english", finnish)
+        word_type = request["word_type"]
+        norm_info = None
+    else:
+        norm = await normalize_word(input_text, source_lang)
+        if not norm.get("valid"):
+            return {
+                "status": "invalid",
+                "error": norm.get("error", "Word not recognized"),
+                "input": input_text,
+                "normalization": norm,
+            }
+        finnish = norm["finnish"]
+        danish = norm.get("danish")
+        english = norm.get("english", finnish)
+        word_type = norm.get("word_type", "noun")
+        norm_info = {
+            "detected_lang": norm.get("detected_lang"),
+            "was_corrected": norm.get("was_corrected"),
+            "correction_note": norm.get("correction_note"),
+        }
+
+    # Check for duplicates
     stmt = select(Word).where(Word.finnish_word.ilike(finnish))
     result = await db.execute(stmt)
     existing = result.scalars().first()
     if existing:
-        return {"status": "exists", "word_id": existing.id, "finnish": existing.finnish_word}
+        resp = {"status": "exists", "word_id": existing.id, "finnish": existing.finnish_word}
+        if norm_info:
+            resp["normalization"] = norm_info
+        return resp
 
     word = Word(
         id=str(uuid.uuid4()),
         finnish_word=finnish,
-        danish_translation=request.get("danish"),
-        english_translation=request.get("english", finnish),
-        part_of_speech=request.get("word_type", "noun"),
+        danish_translation=danish,
+        english_translation=english or finnish,
+        part_of_speech=word_type,
         tags=json.dumps(request.get("tags", [])),
         priority=1.0,
     )
@@ -253,12 +406,18 @@ async def _add_word_impl(request: dict, db: AsyncSession):
     infl_result = await generate_and_store_inflections(db, word)
     await db.commit()
 
-    return {
+    resp = {
         "status": "created",
         "word_id": word.id,
         "finnish": word.finnish_word,
+        "danish": danish,
+        "english": english,
+        "word_type": word_type,
         "inflections_generated": infl_result,
     }
+    if norm_info:
+        resp["normalization"] = norm_info
+    return resp
 
 
 @router.post("")
@@ -594,7 +753,7 @@ async def get_word_inflections(
         "finnish_word": word.finnish_word,
         "part_of_speech": word.part_of_speech,
         "inflections": [
-            {"case_name": i.case_name, "singular": i.singular, "plural": i.plural, "notes": i.notes}
+            {"case_name": i.case_name, "degree": i.degree, "singular": i.singular, "plural": i.plural, "notes": i.notes}
             for i in (word.inflections or [])
         ],
         "verb_forms": [

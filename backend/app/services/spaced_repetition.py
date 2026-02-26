@@ -13,8 +13,9 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.models_db import Word, Concept, AppSetting
+from app.models_db import Word, Concept, AppSetting, UserConceptProgress
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +69,11 @@ async def select_exercise_words(db: AsyncSession) -> dict:
     n_random = max(1, round(count * random_ratio))
     n_priority = count - n_random
 
-    # Highest priority words
+    # Highest priority words (with inflections eager-loaded)
     priority_stmt = (
         select(Word)
         .where(Word.priority > 0)
+        .options(selectinload(Word.inflections), selectinload(Word.verb_forms))
         .order_by(Word.priority.desc())
         .limit(n_priority)
     )
@@ -84,12 +86,14 @@ async def select_exercise_words(db: AsyncSession) -> dict:
         random_stmt = (
             select(Word)
             .where(Word.id.notin_(priority_ids))
+            .options(selectinload(Word.inflections), selectinload(Word.verb_forms))
             .order_by(func.random())
             .limit(n_random)
         )
     else:
         random_stmt = (
             select(Word)
+            .options(selectinload(Word.inflections), selectinload(Word.verb_forms))
             .order_by(func.random())
             .limit(n_random)
         )
@@ -109,7 +113,7 @@ async def select_exercise_words(db: AsyncSession) -> dict:
     concepts = list(concept_result.scalars().all())
 
     def word_to_dict(w: Word) -> dict:
-        return {
+        result = {
             "id": w.id,
             "finnish": w.finnish_word,
             "danish": getattr(w, "danish_translation", None),
@@ -118,6 +122,17 @@ async def select_exercise_words(db: AsyncSession) -> dict:
             "priority": getattr(w, "priority", 1.0),
             "tags": json.loads(w.tags) if getattr(w, "tags", None) else [],
         }
+        if w.inflections:
+            result["inflections"] = [
+                {"case": i.case_name, "degree": i.degree, "sg": i.singular, "pl": i.plural}
+                for i in w.inflections
+            ]
+        if w.verb_forms:
+            result["verb_forms"] = [
+                {"form": v.form_name, "value": v.form_value, "tense": v.tense}
+                for v in w.verb_forms
+            ]
+        return result
 
     def concept_to_dict(c: Concept) -> dict:
         return {
@@ -139,6 +154,7 @@ async def update_priorities_after_exercise(
     db: AsyncSession,
     word_scores: list[dict],
     concept_scores: list[dict] | None = None,
+    user_id: str | None = None,
 ):
     """
     Update word and concept priorities after an exercise.
@@ -200,5 +216,36 @@ async def update_priorities_after_exercise(
                 concept.total_score = (concept.total_score or 0) + score
                 concept.last_score = score
                 concept.last_served = now
+
+    # Update per-user concept mastery if user_id provided
+    if user_id and concept_scores:
+        for cs in concept_scores:
+            concept_id = cs.get("concept_id")
+            score = float(cs.get("score", 5))
+            increment = 0.01 * score  # score 0-10 → +0.00 to +0.10 per exercise
+
+            stmt = select(UserConceptProgress).where(
+                UserConceptProgress.user_id == user_id,
+                UserConceptProgress.concept_id == concept_id,
+            )
+            result = await db.execute(stmt)
+            progress = result.scalars().first()
+
+            if not progress:
+                progress = UserConceptProgress(
+                    user_id=user_id,
+                    concept_id=concept_id,
+                    mastery=0.0,
+                    exercise_count=0,
+                )
+                db.add(progress)
+
+            progress.mastery = min(10.0, progress.mastery + increment)
+            progress.exercise_count += 1
+            progress.last_exercised = now
+            logger.info(
+                f"Concept {concept_id}: mastery {progress.mastery:.2f} "
+                f"(+{increment:.2f}), exercises={progress.exercise_count}"
+            )
 
     await db.commit()

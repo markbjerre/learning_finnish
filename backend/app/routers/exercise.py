@@ -53,9 +53,10 @@ async def submit_exercise_result(
     """
     word_scores = request.get("word_scores", [])
     concept_scores = request.get("concept_scores", [])
+    user_id = request.get("user_id")  # optional, for per-user mastery tracking
     level = await get_setting(db, "level", 15)
 
-    await update_priorities_after_exercise(db, word_scores, concept_scores)
+    await update_priorities_after_exercise(db, word_scores, concept_scores, user_id=user_id)
 
     log_entry = SpacedExerciseLog(
         id=str(uuid.uuid4()),
