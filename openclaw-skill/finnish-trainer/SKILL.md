@@ -45,9 +45,46 @@ Words and concepts are fetched **separately** — concepts rotate weekly, words 
 1. **Fetch words**: `GET /api/exercise/next` → receives words (with inflections) + level
 2. **Fetch active concepts**: `GET /api/concepts?user_id=user-main-admin` → pick 1-3 concepts to focus on this week (see concept selection below)
 3. Generate 2-3 sentences using those words + active concepts (use `generate.md`)
-4. Send to user on WhatsApp
+4. Present exercise to user (see format below)
 5. When user replies, score their response (use `score.md`)
-6. **POST** `/api/exercise/result` with `user_id`, `word_scores`, and `concept_scores`
+6. Send feedback to user (see format below)
+7. **POST** `/api/exercise/result` with `user_id`, `word_scores`, and `concept_scores`
+
+### Exercise presentation format
+
+```
+🇫🇮 Finnish Exercise — Level [X]
+Today's Concept: [Concept Name] ([English description])
+
+Translate these Danish sentences to Finnish:
+
+1. "[Danish sentence 1]"
+2. "[Danish sentence 2]"
+3. "[Danish sentence 3]"
+```
+
+**Notes:**
+- Sentences must be in **Danish** — the user translates them to Finnish
+- Do **not** reveal the Finnish words until after the exercise
+- State the concept name clearly
+- Keep it brief — just the essentials
+
+### Feedback format (after scoring)
+
+```
+📊 Score: X/10 (Y words)
+
+📝 Words:
+• [finnish word] ([danish]) → X.X
+...
+
+📖 Grammar: [concept] — [explanation in Danish]
+
+✅ Correct: "[correct Finnish sentence]"
+❌ Your answer: "[what they wrote]"
+
+Keep practicing! 🇫🇮
+```
 
 ### Exercise result body
 ```json
