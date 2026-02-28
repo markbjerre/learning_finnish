@@ -42,6 +42,7 @@ Copy-Item -Recurse openclaw-skill\finnish-trainer $env:USERPROFILE\.openclaw\ski
 - `POST /api/words` or `POST /api/words/add` — add single word
 - `POST /api/words/bulk-add` — bulk add words (rows or csv)
 - `GET /api/words` — list words
+- `DELETE /api/words/{word_id}/{user_id}` — remove word from user's wordlist
 - `POST /api/concepts` — create concept
 - `GET /api/concepts` — list concepts
 

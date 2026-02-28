@@ -58,15 +58,15 @@ docker exec finnish-db pg_dump -U learning_finnish -d learning_finnish > /mnt/se
 head -20 /mnt/seagate_8TB/finnish/backups/finnish_db_backup_*.sql
 ```
 
-### 1.4 Create directory structure on external drive
+### 1.4 Create directory structure on SSD
 
 ```bash
-# Create the postgres data directory
-sudo mkdir -p /mnt/seagate_8TB/finnish/postgres_data
+# Create the postgres data directory on SSD (avoids Seagate spin-up delays)
+sudo mkdir -p /var/lib/finnish/postgres_data
 
 # Set ownership (postgres in the container runs as UID 999 or 70 depending on image)
 # We'll let the container handle permissions on first start
-sudo chmod 700 /mnt/seagate_8TB/finnish/postgres_data
+sudo chmod 700 /var/lib/finnish/postgres_data
 ```
 
 ### 1.5 Stop and remove old container (if running)
@@ -100,7 +100,7 @@ services:
     ports:
       - "127.0.0.1:5433:5432"  # Only localhost! Port 5433 to avoid conflicts
     volumes:
-      - /mnt/seagate_8TB/finnish/postgres_data:/var/lib/postgresql/data
+      - /var/lib/finnish/postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U learning_finnish"]
       interval: 10s
@@ -139,8 +139,8 @@ docker compose up -d
 sleep 5
 docker ps | grep finnish-db
 
-# Verify it's running on the external drive
-ls -la /mnt/seagate_8TB/finnish/postgres_data/
+# Verify it's running on the SSD
+ls -la /var/lib/finnish/postgres_data/
 ```
 
 ### 1.9 Restore backup (if you had existing data)

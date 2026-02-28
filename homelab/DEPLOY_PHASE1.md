@@ -1,4 +1,4 @@
-# Phase 1: Deploy Finnish DB on Homelab (External Drive)
+# Phase 1: Deploy Finnish DB on Homelab (SSD)
 
 Run these commands **on your homelab** (192.168.0.252). SSH in first:
 
@@ -32,8 +32,9 @@ docker rm finnish-db 2>/dev/null
 
 ### 4. Create directory structure
 ```bash
-sudo mkdir -p /mnt/seagate_8TB/finnish/postgres_data
-sudo chmod 700 /mnt/seagate_8TB/finnish/postgres_data
+# Data lives on SSD to avoid Seagate spin-up delays; backups go to Seagate
+sudo mkdir -p /var/lib/finnish/postgres_data
+sudo chmod 700 /var/lib/finnish/postgres_data
 ```
 
 ### 5. Copy deployment files to homelab
@@ -69,7 +70,7 @@ echo "=================================================="
 docker compose up -d
 sleep 5
 docker ps | grep finnish-db
-ls -la /mnt/seagate_8TB/finnish/postgres_data/
+ls -la /var/lib/finnish/postgres_data/
 ```
 
 ### 8. Restore backup (if you had data in step 2)
@@ -84,4 +85,4 @@ docker exec -it finnish-db psql -U learning_finnish -d learning_finnish -c "SELE
 ss -tlnp | grep 5433
 ```
 
-**Checkpoint:** PostgreSQL running on `/mnt/seagate_8TB/`, listening on `127.0.0.1:5433`.
+**Checkpoint:** PostgreSQL running on `/var/lib/finnish/` (SSD), listening on `127.0.0.1:5433`. Weekly backups go to `/mnt/seagate_8TB/finnish/backups/`.

@@ -13,7 +13,7 @@ services:
       # 0.0.0.0 allows Tailscale access; only Tailscale devices can reach (private VPN)
       - "0.0.0.0:5433:5432"
     volumes:
-      - /mnt/seagate_8TB/finnish/postgres_data:/var/lib/postgresql/data
+      - /var/lib/finnish/postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U learning_finnish"]
       interval: 10s

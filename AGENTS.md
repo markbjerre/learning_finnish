@@ -97,7 +97,7 @@ Read in order:
 | Port | 5433 (homelab) |
 | DB | `learning_finnish` |
 | User | `learning_finnish` |
-| Data | `/mnt/seagate_8TB/finnish/postgres_data/` |
+| Data | `/var/lib/finnish/postgres_data/` (SSD; backups on `/mnt/seagate_8TB/finnish/backups/`) |
 | Docker | `finnish-db` container, `~/homelab/apps/finnish-db/docker-compose.yml` |
 
 ---

@@ -31,6 +31,7 @@ Base: `http://ai-vaerksted-finnish:8000` (OpenClaw and Finnish share Docker netw
 | Add word (any language) | POST | `http://ai-vaerksted-finnish:8000/api/words` |
 | Bulk add words | POST | `http://ai-vaerksted-finnish:8000/api/words/bulk-add` |
 | List words | GET | `http://ai-vaerksted-finnish:8000/api/words` |
+| Remove word from wordlist | DELETE | `http://ai-vaerksted-finnish:8000/api/words/{word_id}/{user_id}` |
 | Health check | GET | `http://ai-vaerksted-finnish:8000/api/health/simple` |
 
 ## Auth
@@ -141,6 +142,18 @@ When the user wants to add a word — accepts Finnish, Danish, or English input:
 4. Confirm to user: "Tilføjet [finnish_word] ([english]) med [N] inflektioner"
 
 If word is invalid or misspelled, API returns `{"status": "invalid", "error": "..."}` — tell the user.
+
+## Removing Words
+
+When the user wants to remove a word from their wordlist:
+
+1. **Fetch wordlist**: `GET http://ai-vaerksted-finnish:8000/api/words` to get all words with their `word_id`s
+2. Match the user's input to the correct word (fuzzy match on Finnish word, Danish translation, or English)
+3. **Confirm** with the user before deleting: "Vil du fjerne [finnish_word] ([danish]) fra ordlisten?"
+4. **DELETE** `http://ai-vaerksted-finnish:8000/api/words/{word_id}/user-main-admin`
+5. Confirm to user: "Fjernet [finnish_word] fra ordlisten"
+
+Returns `{"status": "success", "message": "Word removed from wordbook"}` on success, 404 if not found.
 
 ## Exercise Generation Rules
 

@@ -16,7 +16,7 @@ AI-powered Finnish language learning application with spaced repetition for Open
 
 ## Database
 
-PostgreSQL runs on the homelab (192.168.0.252) at `/mnt/seagate_8TB/finnish/postgres_data`. The VPS connects via Tailscale at `dobbybrain:5433`.
+PostgreSQL runs on the homelab (192.168.0.252) at `/var/lib/finnish/postgres_data` (SSD). Weekly backups go to `/mnt/seagate_8TB/finnish/backups/`. The VPS connects via Tailscale at `dobbybrain:5433`.
 
 **Connection string (VPS):**
 ```

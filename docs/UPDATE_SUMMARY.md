@@ -30,7 +30,7 @@ python backend/scripts/migrate_spaced_repetition.py  # Migration
 
 ## Homelab DB
 
-- **Path:** `/mnt/seagate_8TB/finnish/postgres_data`
+- **Path:** `/var/lib/finnish/postgres_data` (SSD; backups on `/mnt/seagate_8TB/finnish/backups/`)
 - **Compose:** `$HOME/homelab/apps/finnish-db/` (on homelab)
 - **VPS:** `DATABASE_URL=postgresql+asyncpg://...@dobbybrain:5433/learning_finnish`
 
