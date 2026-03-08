@@ -1,7 +1,15 @@
 """Configuration settings for Learning Finnish API"""
 
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
+
+# Load 1Password env before Settings
+import sys
+_backend = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_backend))
+from load_1password_env import load_1password_env
+load_1password_env(_backend)
 
 
 class Settings(BaseSettings):
