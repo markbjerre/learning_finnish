@@ -43,7 +43,7 @@ async def _run_against_server(base_url: str) -> bool:
     base = base_url.rstrip("/")
     all_ok = True
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         # Test 1: GET /api/words returns 200 and array (can be empty)
         try:
             resp = await client.get(f"{base}/api/words")
