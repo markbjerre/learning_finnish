@@ -1,8 +1,19 @@
 # Tailscale Setup for Finnish DB
 
+**Last updated:** 2026-04  
 **Status:** ✅ Complete (Feb 18, 2026)
 
 Tailscale creates a private network between your homelab and VPS — works through CGNAT, no port forwarding needed.
+
+## SSH to the homelab when you are not on the LAN
+
+The homelab is on Tailscale as **`dobbybrain`**. With Tailscale connected on your laptop or phone:
+
+```bash
+ssh markbj@dobbybrain
+```
+
+Use `ssh markbj@192.168.0.252` only on the same local network. The first SSH to `dobbybrain` may ask you to verify a new host key. Full homelab reference: `DobbyBrain/192.168.0.252-control/docs/DobbyBrain_Homelab.instructions.md` (section **SSH: same LAN vs remote**).
 
 ---
 
